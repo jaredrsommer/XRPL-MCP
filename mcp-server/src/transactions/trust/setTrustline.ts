@@ -1,9 +1,7 @@
-import { Client, Wallet, TrustSet, TrustSetFlags } from "xrpl";
+import { TrustSetFlags } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 // Register set-trustline tool
 server.registerTool(
@@ -12,11 +10,11 @@ server.registerTool(
         title: "Set Trustline",
         description: "Create or modify a trust line on the XRP Ledger, allowing you to hold non-XRP assets",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet setting the trust line. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             currency: z
                 .string()
@@ -64,12 +62,11 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
         annotations: { idempotentHint: true },
     },
     async ({
-        fromSeed,
+        walletName,
         currency,
         issuer,
         limit,
@@ -81,61 +78,18 @@ server.registerTool(
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            // Determine which network to use
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
-            // Create TrustSet transaction
-            const trustSetTx: TrustSet = {
-                TransactionType: "TrustSet",
-                Account: wallet.address,
-                LimitAmount: {
-                    currency: currency,
-                    issuer: issuer,
-                    value: limit,
-                },
-                Flags: TrustSetFlags.tfSetNoRipple, // Default flag
-            };
-
-            // Set optional quality fields
-            if (qualityIn) {
-                trustSetTx.QualityIn = qualityIn;
-            }
-            if (qualityOut) {
-                trustSetTx.QualityOut = qualityOut;
-            }
-
-            // Adjust flags based on boolean options
-            let flags: number = trustSetTx.Flags ? Number(trustSetTx.Flags) : 0;
+            // Build flags
+            let flags: number = TrustSetFlags.tfSetNoRipple; // Default flag
 
             if (noRipple === false) {
-                // Clear NoRipple flag if explicitly set to false
                 flags = flags & ~TrustSetFlags.tfSetNoRipple;
             } else if (
                 noRipple === true &&
                 !(flags & TrustSetFlags.tfSetNoRipple)
             ) {
-                // Set NoRipple if explicitly true and not already set (though it's default)
                 flags = flags | TrustSetFlags.tfSetNoRipple;
             }
-
-            // Note: Setting tfClearNoRipple is usually done by clearing the flag bit
 
             if (freeze === true) {
                 flags = flags | TrustSetFlags.tfSetFreeze;
@@ -146,27 +100,41 @@ server.registerTool(
 
             if (auth === true) {
                 flags = flags | TrustSetFlags.tfSetfAuth;
-            } // No tfClearAuth equivalent, clearing requires different tx or issuer action
+            }
 
-            trustSetTx.Flags = flags;
+            // Create TrustSet transaction
+            const tx: Record<string, unknown> = {
+                TransactionType: "TrustSet",
+                LimitAmount: {
+                    currency,
+                    issuer,
+                    value: limit,
+                },
+                Flags: flags,
+            };
 
-            // Add optional fee if provided
+            if (qualityIn) {
+                tx.QualityIn = qualityIn;
+            }
+            if (qualityOut) {
+                tx.QualityOut = qualityOut;
+            }
             if (fee) {
-                trustSetTx.Fee = fee;
+                tx.Fee = fee;
             }
 
-            // Submit transaction
-            const prepared = await client.autofill(trustSetTx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "set-trustline",
+                summary: {
+                    transactionType: "TrustSet",
+                    fromAddress: "",
+                    amount: limit,
+                    currency,
+                    description: `Set trust line for ${currency} (issuer: ${issuer}) with limit ${limit}`,
+                },
+            });
 
             return {
                 content: [
@@ -174,22 +142,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                account: wallet.address,
-                                currency,
-                                issuer,
-                                limit,
-                                flagsSet: flags, // Return the final flags value
-                                qualityIn,
-                                qualityOut,
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -210,10 +169,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

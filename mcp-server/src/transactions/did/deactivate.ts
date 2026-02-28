@@ -1,10 +1,9 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
+import { executor, walletRegistry } from "../../core/custody/index.js";
+import { retrieveDIDDocument } from "../../core/utils.js";
 import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
-import { retrieveDIDDocument, storeDIDDocument } from "../../core/utils.js";
+import { isConnectedToTestnet } from "../../core/state.js";
 
 // Register deactivate-did tool
 server.registerTool(
@@ -13,46 +12,37 @@ server.registerTool(
         title: "Deactivate DID",
         description: "Deactivate a DID by marking it as revoked",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Seed of the wallet that controls the DID, if not using connected wallet"
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             useTestnet: z
                 .boolean()
                 .optional()
                 .describe("Whether to use testnet or mainnet"),
-
         },
         annotations: { destructiveHint: true },
     },
-    async ({ fromSeed, useTestnet }) => {
-        let client: Client | null = null;
+    async ({ walletName, useTestnet }) => {
         try {
+            // Resolve wallet to get address for DID document retrieval
+            const provider = walletRegistry.resolve(walletName);
+            const address = provider.getAddress();
+
             const useTestnetNetwork =
                 useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
 
-            const networkStr = useTestnetNetwork ? "testnet" : "mainnet";
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first or provide a fromSeed."
-                );
+            // Get existing DID document via a temporary client connection
+            let client = null;
+            let existingDidDocument;
+            try {
+                client = await getXrplClient(useTestnetNetwork);
+                existingDidDocument = await retrieveDIDDocument(client, address);
+            } finally {
+                if (client) await client.disconnect();
             }
-
-            // Get existing DID document
-            const existingDidDocument = await retrieveDIDDocument(
-                client,
-                wallet.address
-            );
 
             if (!existingDidDocument) {
                 throw new Error(
@@ -67,20 +57,34 @@ server.registerTool(
                 deactivated: true,
             };
 
-            // Store deactivated DID document
-            const result = await storeDIDDocument(
-                client,
-                wallet,
-                deactivatedDidDocument
-            );
+            // Build the transaction to store deactivated DID document
+            const didDocumentStr = JSON.stringify(deactivatedDidDocument);
+            const tx: Record<string, unknown> = {
+                TransactionType: "AccountSet",
+                Memos: [
+                    {
+                        Memo: {
+                            MemoType: Buffer.from("did:document")
+                                .toString("hex")
+                                .toUpperCase(),
+                            MemoData: Buffer.from(didDocumentStr)
+                                .toString("hex")
+                                .toUpperCase(),
+                        },
+                    },
+                ],
+            };
 
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "deactivate-did",
+                summary: {
+                    transactionType: "DIDDelete",
+                    fromAddress: "",
+                    description: `Deactivate DID for account ${address}`,
+                },
+            });
 
             return {
                 content: [
@@ -88,16 +92,14 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
                                 did: deactivatedDidDocument.id,
-                                deactivated: true,
-                                transaction: result.result.hash,
-                                _meta: {
-                                    network: useTestnetNetwork
-                                        ? TESTNET_URL
-                                        : MAINNET_URL,
-                                    networkType: networkStr,
-                                },
+                                message: result.message,
                             },
                             null,
                             2
@@ -118,10 +120,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

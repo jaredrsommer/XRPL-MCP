@@ -1,9 +1,26 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
+
+// Format amount based on type (XRP drops, MPT, or issued currency)
+const formatAmount = (amountObj: string | any) => {
+    if (typeof amountObj === "string") {
+        return amountObj;
+    } else if (amountObj.mpt_issuance_id) {
+        return {
+            mpt_issuance_id: amountObj.mpt_issuance_id,
+            value: amountObj.value,
+        };
+    } else if (amountObj.currency.toUpperCase() === "XRP") {
+        return amountObj.value;
+    } else {
+        return {
+            currency: amountObj.currency,
+            issuer: amountObj.issuer,
+            value: amountObj.value,
+        };
+    }
+};
 
 server.registerTool(
     "payment",
@@ -11,11 +28,11 @@ server.registerTool(
         title: "Send Payment",
         description: "Send a payment from one account to another on the XRP Ledger",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             destination: z
                 .string()
@@ -124,11 +141,11 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
+        annotations: { destructiveHint: true },
     },
     async ({
-        fromSeed,
+        walletName,
         destination,
         amount,
         sendMax,
@@ -143,58 +160,27 @@ server.registerTool(
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            // Determine which network to use
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
+            // Validate payment type rules
+            if (typeof amount === "string" && typeof sendMax === "string") {
                 throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
+                    "Cannot use both XRP for amount and sendMax in a direct XRP payment"
                 );
             }
 
-            // Format amount based on type
-            const formatAmount = (amountObj: string | any) => {
-                if (typeof amountObj === "string") {
-                    // XRP amount in drops
-                    return amountObj;
-                } else if (amountObj.mpt_issuance_id) {
-                    // MPT payment
-                    return {
-                        mpt_issuance_id: amountObj.mpt_issuance_id,
-                        value: amountObj.value,
-                    };
-                } else if (amountObj.currency.toUpperCase() === "XRP") {
-                    // XRP in object form - convert to drops
-                    return amountObj.value;
-                } else {
-                    // Other issued currency
-                    return {
-                        currency: amountObj.currency,
-                        issuer: amountObj.issuer,
-                        value: amountObj.value,
-                    };
-                }
-            };
+            if (paths && typeof amount === "string" && !sendMax) {
+                throw new Error(
+                    "Paths should not be specified for direct XRP payments"
+                );
+            }
 
             // Create Payment transaction
-            const paymentTx: any = {
+            const paymentTx: Record<string, unknown> = {
                 TransactionType: "Payment",
-                Account: wallet.address,
                 Destination: destination,
                 DeliverMax: formatAmount(amount),
             };
 
-            // Add optional fields if provided
             if (sendMax !== undefined) {
                 paymentTx.SendMax = formatAmount(sendMax);
             }
@@ -224,15 +210,12 @@ server.registerTool(
             if (partialPayment === true) {
                 flags |= 0x00020000; // tfPartialPayment
             }
-
             if (noRippleDirect === true) {
                 flags |= 0x00010000; // tfNoRippleDirect
             }
-
             if (limitQuality === true) {
                 flags |= 0x00040000; // tfLimitQuality
             }
-
             if (flags !== 0) {
                 paymentTx.Flags = flags;
             }
@@ -241,41 +224,37 @@ server.registerTool(
                 paymentTx.Fee = fee;
             }
 
-            // Validate payment type rules
-            if (typeof amount === "string" && typeof sendMax === "string") {
-                throw new Error(
-                    "Cannot use both XRP for amount and sendMax in a direct XRP payment"
-                );
-            }
+            // Build description
+            const amountStr =
+                typeof amount === "string"
+                    ? `${amount} drops`
+                    : amount.mpt_issuance_id
+                      ? `${amount.value} MPT`
+                      : `${amount.value} ${amount.currency}`;
 
-            if (paths && typeof amount === "string" && !sendMax) {
-                throw new Error(
-                    "Paths should not be specified for direct XRP payments"
-                );
-            }
-
-            // Submit transaction
-            const prepared = await client.autofill(paymentTx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
-
-            // Get delivered amount from metadata if available
-            let deliveredAmount = null;
-            if (
-                typeof result.result.meta !== "string" &&
-                result.result.meta &&
-                result.result.meta.delivered_amount
-            ) {
-                deliveredAmount = result.result.meta.delivered_amount;
-            }
+            const result = await executor.prepare(paymentTx, {
+                walletName,
+                useTestnet,
+                toolName: "payment",
+                summary: {
+                    transactionType: "Payment",
+                    fromAddress: "",
+                    toAddress: destination,
+                    amount: typeof amount === "string" ? amount : amount.value,
+                    currency:
+                        typeof amount === "string"
+                            ? "XRP (drops)"
+                            : amount.currency || "MPT",
+                    description: `Payment of ${amountStr} to ${destination}`,
+                },
+                resultExtractor: (result) => {
+                    const meta = result.meta as any;
+                    if (!meta) return {};
+                    return {
+                        deliveredAmount: meta.delivered_amount ?? null,
+                    };
+                },
+            });
 
             return {
                 content: [
@@ -283,26 +262,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                account: wallet.address,
-                                destination,
-                                amount,
-                                sendMax: sendMax || undefined,
-                                deliverMin: deliverMin || undefined,
-                                deliveredAmount: deliveredAmount,
-                                destinationTag: destinationTag || undefined,
-                                invoiceId: invoiceId || undefined,
-                                partialPayment: partialPayment || undefined,
-                                noRippleDirect: noRippleDirect || undefined,
-                                limitQuality: limitQuality || undefined,
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -323,10 +289,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

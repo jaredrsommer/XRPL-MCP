@@ -1,9 +1,6 @@
-import { Client, Wallet, CheckCancel } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 // Register check-cancel tool
 server.registerTool(
@@ -12,11 +9,11 @@ server.registerTool(
         title: "Cancel Check",
         description: "Cancel an uncashed Check on the XRP Ledger",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             checkID: z
                 .string()
@@ -30,55 +27,30 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
         annotations: { destructiveHint: true },
     },
-    async ({ fromSeed, checkID, fee, useTestnet }) => {
-        let client: Client | null = null;
+    async ({ walletName, checkID, fee, useTestnet }) => {
         try {
-            // Determine which network to use
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
-            // Create CheckCancel transaction
-            const checkCancelTx: CheckCancel = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "CheckCancel",
-                Account: wallet.address,
                 CheckID: checkID,
             };
 
-            // Add optional fee if provided
             if (fee) {
-                checkCancelTx.Fee = fee;
+                tx.Fee = fee;
             }
 
-            // Submit transaction
-            const prepared = await client.autofill(checkCancelTx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "check-cancel",
+                summary: {
+                    transactionType: "CheckCancel",
+                    fromAddress: "",
+                    description: `Cancel Check ${checkID}`,
+                },
+            });
 
             return {
                 content: [
@@ -86,17 +58,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                account: wallet.address,
-                                checkID,
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -117,10 +85,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

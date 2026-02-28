@@ -1,6 +1,7 @@
-import { Client, Wallet } from "xrpl";
+import { Client } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
+import { executor } from "../../core/custody/index.js";
 import { getXrplClient } from "../../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
@@ -89,11 +90,11 @@ server.registerTool(
         title: "Set Delegate",
         description: "Delegate transaction permissions to another account on the XRP Ledger. Allows an account to authorize another account to submit specific transaction types on their behalf. Note: AccountSet, SetRegularKey, SignerListSet, DelegateSet, and AccountDelete cannot be delegated for security reasons.",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the delegator's wallet. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             delegate: z
                 .string()
@@ -113,34 +114,16 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). Note: Permission Delegation may only be available on devnet."
                 ),
-
         },
     },
     async ({
-        fromSeed,
+        walletName,
         delegate,
         permissions = [],
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
             // Convert permission names to values
             const permissionValues: number[] = [];
             const unknownPermissions: string[] = [];
@@ -166,28 +149,27 @@ server.registerTool(
                 },
             }));
 
-            const tx: any = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "DelegateSet",
-                Account: wallet.address,
                 Delegate: delegate,
                 Permissions: formattedPermissions,
             };
 
             if (fee) tx.Fee = fee;
 
-            const prepared = await client.autofill(tx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
+            const action = permissions.length === 0 ? "revoke all permissions from" : "grant permissions to";
 
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
-
-            const action = permissions.length === 0 ? "revoked all permissions" : "granted permissions";
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "delegate-set",
+                summary: {
+                    transactionType: "DelegateSet",
+                    fromAddress: "",
+                    toAddress: delegate,
+                    description: `${action} delegate ${delegate}${permissions.length > 0 ? ` (${permissions.join(", ")})` : ""}`,
+                },
+            });
 
             return {
                 content: [
@@ -195,21 +177,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                delegator: wallet.address,
-                                delegate,
-                                action,
-                                permissions: permissions.length > 0 ? permissions : [],
-                                permissionValues: permissionValues.length > 0 ? permissionValues : [],
-                                note: "Permission Delegation requires the PermissionDelegation amendment to be enabled.",
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -230,10 +204,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );
@@ -256,7 +226,6 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false)."
                 ),
-
         },
         annotations: { readOnlyHint: true },
     },

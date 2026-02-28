@@ -1,9 +1,6 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
@@ -14,11 +11,11 @@ server.registerTool(
         title: "Create Credential",
         description: "Create a credential on the XRP Ledger. The issuer creates credentials to attest facts about a subject account (e.g., KYC verification, accreditation status). The credential must be accepted by the subject to become valid.",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the issuer's wallet. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             subject: z
                 .string()
@@ -50,11 +47,10 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false)."
                 ),
-
         },
     },
     async ({
-        fromSeed,
+        walletName,
         subject,
         credentialType,
         expiration,
@@ -62,27 +58,9 @@ server.registerTool(
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
-            const tx: any = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "CredentialCreate",
-                Account: wallet.address,
                 Subject: subject,
                 CredentialType: toHex(credentialType),
             };
@@ -97,27 +75,28 @@ server.registerTool(
 
             if (fee) tx.Fee = fee;
 
-            const prepared = await client.autofill(tx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            let credentialIndex: string | undefined;
-
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-
-                // Extract credential index from created nodes
-                const createdNodes = (result.result.meta as any).AffectedNodes?.filter(
-                    (node: any) => node.CreatedNode?.LedgerEntryType === "Credential"
-                );
-                if (createdNodes?.length > 0) {
-                    credentialIndex = createdNodes[0].CreatedNode.LedgerIndex;
-                }
-            }
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "credential-create",
+                summary: {
+                    transactionType: "CredentialCreate",
+                    fromAddress: "",
+                    toAddress: subject,
+                    description: `Create credential "${credentialType}" for subject ${subject}`,
+                },
+                resultExtractor: (result) => {
+                    const meta = result.meta as any;
+                    if (!meta?.AffectedNodes) return {};
+                    const createdNodes = meta.AffectedNodes.filter(
+                        (node: any) => node.CreatedNode?.LedgerEntryType === "Credential"
+                    );
+                    if (createdNodes?.length > 0) {
+                        return { credentialIndex: createdNodes[0].CreatedNode.LedgerIndex };
+                    }
+                    return {};
+                },
+            });
 
             return {
                 content: [
@@ -125,23 +104,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                credentialIndex,
-                                issuer: wallet.address,
-                                subject,
-                                credentialType,
-                                credentialTypeHex: toHex(credentialType),
-                                expiration: expiration ?? null,
-                                uri: uri ?? null,
-                                note: "Credential is provisionally issued. Subject must accept it with CredentialAccept for it to be valid.",
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -162,10 +131,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );
