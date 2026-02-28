@@ -7,20 +7,25 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 import { retrieveDIDDocument, storeDIDDocument } from "../../core/utils.js";
 
 // Register deactivate-did tool
-server.tool(
+server.registerTool(
     "deactivate-did",
-    "Deactivate a DID by marking it as revoked",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Seed of the wallet that controls the DID, if not using connected wallet"
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Deactivate DID",
+        description: "Deactivate a DID by marking it as revoked",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Seed of the wallet that controls the DID, if not using connected wallet"
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({ fromSeed, useTestnet }) => {
         let client: Client | null = null;

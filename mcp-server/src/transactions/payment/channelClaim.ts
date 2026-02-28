@@ -12,62 +12,66 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register payment-channel-claim tool
-server.tool(
+server.registerTool(
     "payment-channel-claim",
-    "Claim funds from a Payment Channel on the XRP Ledger",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet claiming funds. If not provided, the connected wallet will be used."
-            ),
-        channel: z
-            .string()
-            .describe("The ID of the Payment Channel to claim from."),
-        balance: z
-            .string()
-            .optional()
-            .describe(
-                "Total amount of XRP drops delivered by this channel after this claim. Required unless closing the channel."
-            ),
-        amount: z
-            .string()
-            .optional()
-            .describe(
-                "Amount of XRP drops to claim. Required unless closing the channel or specifying balance."
-            ),
-        signature: z
-            .string()
-            .optional()
-            .describe(
-                "Signature of the claim, signed by the channel owner. Required unless closing the channel."
-            ),
-        publicKey: z
-            .string()
-            .optional()
-            .describe(
-                "Public key corresponding to the private key used for the signature. Required if signature is provided."
-            ),
-        close: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-                "If true, close the channel. Either the channel source or destination can close."
-            ),
-        renew: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe("If true, renew the channel's expiration time."),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Claim Payment Channel",
+        description: "Claim funds from a Payment Channel on the XRP Ledger",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet claiming funds. If not provided, the connected wallet will be used."
+                ),
+            channel: z
+                .string()
+                .describe("The ID of the Payment Channel to claim from."),
+            balance: z
+                .string()
+                .optional()
+                .describe(
+                    "Total amount of XRP drops delivered by this channel after this claim. Required unless closing the channel."
+                ),
+            amount: z
+                .string()
+                .optional()
+                .describe(
+                    "Amount of XRP drops to claim. Required unless closing the channel or specifying balance."
+                ),
+            signature: z
+                .string()
+                .optional()
+                .describe(
+                    "Signature of the claim, signed by the channel owner. Required unless closing the channel."
+                ),
+            publicKey: z
+                .string()
+                .optional()
+                .describe(
+                    "Public key corresponding to the private key used for the signature. Required if signature is provided."
+                ),
+            close: z
+                .boolean()
+                .optional()
+                .default(false)
+                .describe(
+                    "If true, close the channel. Either the channel source or destination can close."
+                ),
+            renew: z
+                .boolean()
+                .optional()
+                .default(false)
+                .describe("If true, renew the channel's expiration time."),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

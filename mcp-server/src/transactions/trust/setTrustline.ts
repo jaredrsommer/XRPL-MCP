@@ -6,62 +6,67 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register set-trustline tool
-server.tool(
+server.registerTool(
     "set-trustline",
-    "Create or modify a trust line on the XRP Ledger, allowing you to hold non-XRP assets",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet setting the trust line. If not provided, the connected wallet will be used."
-            ),
-        currency: z
-            .string()
-            .describe("The currency code of the asset (e.g., 'USD', 'EUR')."),
-        issuer: z.string().describe("The address of the issuer of the asset."),
-        limit: z
-            .string()
-            .describe(
-                "The maximum amount of the currency you are willing to hold. Use '0' to remove the trust line (if balance is zero)."
-            ),
-        qualityIn: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe("Optional quality modifier for incoming payments."),
-        qualityOut: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe("Optional quality modifier for outgoing payments."),
-        noRipple: z
-            .boolean()
-            .optional()
-            .describe(
-                "If true, disable the NoRipple flag (allow rippling). Default is usually enabled (tfSetNoRipple)."
-            ),
-        freeze: z
-            .boolean()
-            .optional()
-            .describe(
-                "If true, set the Freeze flag (tfSetFreeze). Only the issuer can set this."
-            ),
-        auth: z
-            .boolean()
-            .optional()
-            .describe(
-                "If true, set the Auth flag (tfSetfAuth). Can only be set if the lsfRequireAuth flag is enabled on the account."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Set Trustline",
+        description: "Create or modify a trust line on the XRP Ledger, allowing you to hold non-XRP assets",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet setting the trust line. If not provided, the connected wallet will be used."
+                ),
+            currency: z
+                .string()
+                .describe("The currency code of the asset (e.g., 'USD', 'EUR')."),
+            issuer: z.string().describe("The address of the issuer of the asset."),
+            limit: z
+                .string()
+                .describe(
+                    "The maximum amount of the currency you are willing to hold. Use '0' to remove the trust line (if balance is zero)."
+                ),
+            qualityIn: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe("Optional quality modifier for incoming payments."),
+            qualityOut: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe("Optional quality modifier for outgoing payments."),
+            noRipple: z
+                .boolean()
+                .optional()
+                .describe(
+                    "If true, disable the NoRipple flag (allow rippling). Default is usually enabled (tfSetNoRipple)."
+                ),
+            freeze: z
+                .boolean()
+                .optional()
+                .describe(
+                    "If true, set the Freeze flag (tfSetFreeze). Only the issuer can set this."
+                ),
+            auth: z
+                .boolean()
+                .optional()
+                .describe(
+                    "If true, set the Auth flag (tfSetfAuth). Can only be set if the lsfRequireAuth flag is enabled on the account."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { idempotentHint: true },
     },
     async ({
         fromSeed,

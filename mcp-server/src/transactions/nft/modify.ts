@@ -8,40 +8,44 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
 
-server.tool(
+server.registerTool(
     "nft-modify",
-    "Modify the URI of a dynamic NFT (dNFT) on the XRP Ledger. The NFT must have been minted with the tfMutable flag enabled. Only the issuer or their authorized minter can modify the URI.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the issuer's or authorized minter's wallet. If not provided, the connected wallet will be used."
-            ),
-        nftokenID: z
-            .string()
-            .describe(
-                "The NFTokenID of the NFT to modify (64-character hex string). The NFT must have tfMutable flag set."
-            ),
-        uri: z
-            .string()
-            .optional()
-            .describe(
-                "The new URI for the NFT. Can be an HTTPS URL, IPFS URI, or any other URI format (max 256 bytes). Will be hex-encoded. If empty, the URI will be cleared."
-            ),
-        owner: z
-            .string()
-            .optional()
-            .describe(
-                "Optional: The account that owns the NFT. Required if the issuer is different from the current owner."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Modify NFT",
+        description: "Modify the URI of a dynamic NFT (dNFT) on the XRP Ledger. The NFT must have been minted with the tfMutable flag enabled. Only the issuer or their authorized minter can modify the URI.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the issuer's or authorized minter's wallet. If not provided, the connected wallet will be used."
+                ),
+            nftokenID: z
+                .string()
+                .describe(
+                    "The NFTokenID of the NFT to modify (64-character hex string). The NFT must have tfMutable flag set."
+                ),
+            uri: z
+                .string()
+                .optional()
+                .describe(
+                    "The new URI for the NFT. Can be an HTTPS URL, IPFS URI, or any other URI format (max 256 bytes). Will be hex-encoded. If empty, the URI will be cleared."
+                ),
+            owner: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional: The account that owns the NFT. Required if the issuer is different from the current owner."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
     },
     async ({
         fromSeed,

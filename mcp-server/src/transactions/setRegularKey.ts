@@ -6,29 +6,34 @@ import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../core/state.js";
 
 // Register set-regular-key tool
-server.tool(
+server.registerTool(
     "set-regular-key",
-    "Assign, change, or remove a regular key pair for an account",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        regularKey: z
-            .string()
-            .optional()
-            .describe(
-                "Address of the regular key to assign. If omitted, removes any existing regular key"
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Set Regular Key",
+        description: "Assign, change, or remove a regular key pair for an account",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            regularKey: z
+                .string()
+                .optional()
+                .describe(
+                    "Address of the regular key to assign. If omitted, removes any existing regular key"
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { idempotentHint: true },
     },
     async ({ fromSeed, regularKey, fee, useTestnet }) => {
         let client: Client | null = null;

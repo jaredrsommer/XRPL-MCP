@@ -7,87 +7,91 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register offer-create tool
-server.tool(
+server.registerTool(
     "offer-create",
-    "Create an Offer (order) in the XRP Ledger's decentralized exchange",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet creating the offer. If not provided, the connected wallet will be used."
-            ),
-        takerGets: z
-            .object({
-                currency: z.string().describe("Currency code (e.g., XRP, USD)"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe("Issuer address (if not XRP)"),
-                value: z.string().describe("Amount the taker receives"),
-            })
-            .describe("The amount the taker receives (what you are selling)"),
-        takerPays: z
-            .object({
-                currency: z.string().describe("Currency code (e.g., XRP, USD)"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe("Issuer address (if not XRP)"),
-                value: z.string().describe("Amount the taker pays"),
-            })
-            .describe("The amount the taker pays (what you are buying)"),
-        expiration: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Optional time after which the Offer is no longer active (seconds since Ripple Epoch)."
-            ),
-        offerSequence: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Optional sequence number. If provided, replace/cancel the existing offer with this sequence number."
-            ),
-        passive: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-                "If true, the offer does not consume offers that exactly match it, and instead becomes an Offer object in the ledger."
-            ),
-        immediateOrCancel: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-                "If true, the offer executes immediately against matching offers or is cancelled."
-            ),
-        fillOrKill: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-                "If true, the offer executes immediately and entirely against matching offers or is cancelled."
-            ),
-        sell: z
-            .boolean()
-            .optional()
-            .default(false)
-            .describe(
-                "If true, the offer is a sell offer (offer to sell TakerGets). Requires TakerPays to be XRP for NFTs."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Create Offer",
+        description: "Create an Offer (order) in the XRP Ledger's decentralized exchange",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet creating the offer. If not provided, the connected wallet will be used."
+                ),
+            takerGets: z
+                .object({
+                    currency: z.string().describe("Currency code (e.g., XRP, USD)"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe("Issuer address (if not XRP)"),
+                    value: z.string().describe("Amount the taker receives"),
+                })
+                .describe("The amount the taker receives (what you are selling)"),
+            takerPays: z
+                .object({
+                    currency: z.string().describe("Currency code (e.g., XRP, USD)"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe("Issuer address (if not XRP)"),
+                    value: z.string().describe("Amount the taker pays"),
+                })
+                .describe("The amount the taker pays (what you are buying)"),
+            expiration: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Optional time after which the Offer is no longer active (seconds since Ripple Epoch)."
+                ),
+            offerSequence: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Optional sequence number. If provided, replace/cancel the existing offer with this sequence number."
+                ),
+            passive: z
+                .boolean()
+                .optional()
+                .default(false)
+                .describe(
+                    "If true, the offer does not consume offers that exactly match it, and instead becomes an Offer object in the ledger."
+                ),
+            immediateOrCancel: z
+                .boolean()
+                .optional()
+                .default(false)
+                .describe(
+                    "If true, the offer executes immediately against matching offers or is cancelled."
+                ),
+            fillOrKill: z
+                .boolean()
+                .optional()
+                .default(false)
+                .describe(
+                    "If true, the offer executes immediately and entirely against matching offers or is cancelled."
+                ),
+            sell: z
+                .boolean()
+                .optional()
+                .default(false)
+                .describe(
+                    "If true, the offer is a sell offer (offer to sell TakerGets). Requires TakerPays to be XRP for NFTs."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

@@ -6,18 +6,23 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register get-nft-collection tool
-server.tool(
+server.registerTool(
     "get-nft-collection",
-    "Get all NFTs owned by an address",
     {
-        address: z
-            .string()
-            .optional()
-            .describe("Account address to check, defaults to connected wallet"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Get NFT Collection",
+        description: "Get all NFTs owned by an address",
+        inputSchema: {
+            address: z
+                .string()
+                .optional()
+                .describe("Account address to check, defaults to connected wallet"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ address, useTestnet }) => {
         let client: Client | null = null;

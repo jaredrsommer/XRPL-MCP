@@ -5,36 +5,41 @@ import { getXrplClient } from "../../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
-server.tool(
+server.registerTool(
     "token-clawback",
-    "Claw back tokens issued by your account from a holder",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the issuer wallet to use. If not provided, the connected wallet will be used."
-            ),
-        amount: z
-            .object({
-                currency: z
-                    .string()
-                    .describe("Currency code of the token to claw back"),
-                issuer: z
-                    .string()
-                    .describe(
-                        "Address of the holder (not the issuer) of the tokens"
-                    ),
-                value: z.string().describe("Amount of tokens to claw back"),
-            })
-            .describe("Token amount details"),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Token Clawback",
+        description: "Claw back tokens issued by your account from a holder",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the issuer wallet to use. If not provided, the connected wallet will be used."
+                ),
+            amount: z
+                .object({
+                    currency: z
+                        .string()
+                        .describe("Currency code of the token to claw back"),
+                    issuer: z
+                        .string()
+                        .describe(
+                            "Address of the holder (not the issuer) of the tokens"
+                        ),
+                    value: z.string().describe("Amount of tokens to claw back"),
+                })
+                .describe("Token amount details"),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({ fromSeed, amount, fee, useTestnet }) => {
         let client: Client | null = null;

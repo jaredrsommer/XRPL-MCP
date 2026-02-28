@@ -6,55 +6,59 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register amm-vote tool
-server.tool(
+server.registerTool(
     "amm-vote",
-    "Vote on parameters for an Automated Market Maker (AMM)",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        asset1: z
-            .object({
-                currency: z
-                    .string()
-                    .describe("Currency code of the first asset"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe(
-                        "Issuer address of the first asset (not needed for XRP)"
-                    ),
-            })
-            .describe("First asset in the AMM's pool"),
-        asset2: z
-            .object({
-                currency: z
-                    .string()
-                    .describe("Currency code of the second asset"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe(
-                        "Issuer address of the second asset (not needed for XRP)"
-                    ),
-            })
-            .describe("Second asset in the AMM's pool"),
-        tradingFee: z
-            .number()
-            .min(0)
-            .max(1000)
-            .optional()
-            .describe("Trading fee in basis points (0-1000, where 100 = 1%)"),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "AMM Vote",
+        description: "Vote on parameters for an Automated Market Maker (AMM)",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            asset1: z
+                .object({
+                    currency: z
+                        .string()
+                        .describe("Currency code of the first asset"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe(
+                            "Issuer address of the first asset (not needed for XRP)"
+                        ),
+                })
+                .describe("First asset in the AMM's pool"),
+            asset2: z
+                .object({
+                    currency: z
+                        .string()
+                        .describe("Currency code of the second asset"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe(
+                            "Issuer address of the second asset (not needed for XRP)"
+                        ),
+                })
+                .describe("Second asset in the AMM's pool"),
+            tradingFee: z
+                .number()
+                .min(0)
+                .max(1000)
+                .optional()
+                .describe("Trading fee in basis points (0-1000, where 100 = 1%)"),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({ fromSeed, asset1, asset2, tradingFee, fee, useTestnet }) => {
         let client: Client | null = null;

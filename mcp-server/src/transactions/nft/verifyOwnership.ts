@@ -6,19 +6,24 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register verify-nft-ownership tool
-server.tool(
+server.registerTool(
     "verify-nft-ownership",
-    "Verify if an address owns a specific NFT",
     {
-        address: z
-            .string()
-            .optional()
-            .describe("Account address to check, defaults to connected wallet"),
-        tokenID: z.string().describe("NFT token ID"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Verify NFT Ownership",
+        description: "Verify if an address owns a specific NFT",
+        inputSchema: {
+            address: z
+                .string()
+                .optional()
+                .describe("Account address to check, defaults to connected wallet"),
+            tokenID: z.string().describe("NFT token ID"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ address, tokenID, useTestnet }) => {
         let client: Client | null = null;

@@ -5,28 +5,33 @@ import { getXrplClient } from "../../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
-server.tool(
+server.registerTool(
     "mpt-issuance-destroy",
-    "Destroy/delete a Multi-Purpose Token (MPT) issuance. The issuance must have zero outstanding tokens.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet (must be the issuer). If not provided, the connected wallet will be used."
-            ),
-        mptIssuanceID: z
-            .string()
-            .describe(
-                "The MPTokenIssuanceID of the MPT to destroy (64-character hex string)."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Destroy MPT Issuance",
+        description: "Destroy/delete a Multi-Purpose Token (MPT) issuance. The issuance must have zero outstanding tokens.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet (must be the issuer). If not provided, the connected wallet will be used."
+                ),
+            mptIssuanceID: z
+                .string()
+                .describe(
+                    "The MPTokenIssuanceID of the MPT to destroy (64-character hex string)."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({
         fromSeed,

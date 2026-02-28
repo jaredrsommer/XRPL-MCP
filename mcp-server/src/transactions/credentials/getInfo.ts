@@ -8,25 +8,30 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
 
-server.tool(
+server.registerTool(
     "credential-get-info",
-    "Get information about a specific credential on the XRP Ledger.",
     {
-        issuer: z
-            .string()
-            .describe("The account address of the credential issuer."),
-        subject: z
-            .string()
-            .describe("The account address of the credential subject."),
-        credentialType: z
-            .string()
-            .describe("Type of credential to query. Will be hex-encoded."),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Get Credential Info",
+        description: "Get information about a specific credential on the XRP Ledger.",
+        inputSchema: {
+            issuer: z
+                .string()
+                .describe("The account address of the credential issuer."),
+            subject: z
+                .string()
+                .describe("The account address of the credential subject."),
+            credentialType: z
+                .string()
+                .describe("Type of credential to query. Will be hex-encoded."),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ issuer, subject, credentialType, useTestnet }) => {
         let client: Client | null = null;
@@ -147,28 +152,33 @@ server.tool(
     }
 );
 
-server.tool(
+server.registerTool(
     "credentials-list",
-    "List all credentials for an account (either as issuer or subject).",
     {
-        account: z
-            .string()
-            .optional()
-            .describe(
-                "The account address to list credentials for. If not provided, uses the connected wallet."
-            ),
-        role: z
-            .enum(["subject", "issuer", "both"])
-            .optional()
-            .describe(
-                "Filter by role: 'subject' (credentials issued to this account), 'issuer' (credentials issued by this account), or 'both' (default)."
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "List Credentials",
+        description: "List all credentials for an account (either as issuer or subject).",
+        inputSchema: {
+            account: z
+                .string()
+                .optional()
+                .describe(
+                    "The account address to list credentials for. If not provided, uses the connected wallet."
+                ),
+            role: z
+                .enum(["subject", "issuer", "both"])
+                .optional()
+                .describe(
+                    "Filter by role: 'subject' (credentials issued to this account), 'issuer' (credentials issued by this account), or 'both' (default)."
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ account, role = "both", useTestnet }) => {
         let client: Client | null = null;

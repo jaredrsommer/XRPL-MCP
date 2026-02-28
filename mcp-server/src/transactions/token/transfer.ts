@@ -6,24 +6,28 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register transfer-token tool
-server.tool(
+server.registerTool(
     "transfer-token",
-    "Transfer tokens between addresses",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Seed of the wallet to send from, if not using connected wallet"
-            ),
-        toAddress: z.string().describe("Destination address"),
-        currency: z.string().describe("Currency code"),
-        issuer: z.string().describe("Issuer address for the token"),
-        amount: z.string().describe("Amount to send"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Transfer Token",
+        description: "Transfer tokens between addresses",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Seed of the wallet to send from, if not using connected wallet"
+                ),
+            toAddress: z.string().describe("Destination address"),
+            currency: z.string().describe("Currency code"),
+            issuer: z.string().describe("Issuer address for the token"),
+            amount: z.string().describe("Amount to send"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
     },
     async ({ fromSeed, toAddress, currency, issuer, amount, useTestnet }) => {
         let client: Client | null = null;

@@ -11,40 +11,45 @@ const MPTokenIssuanceSetFlags = {
     tfMPTUnlock: 0x0002,  // Unlock the MPT issuance
 };
 
-server.tool(
+server.registerTool(
     "mpt-issuance-set",
-    "Modify the properties of an existing Multi-Purpose Token (MPT) issuance. Can lock/unlock the issuance or update holder authorization.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet (must be the issuer). If not provided, the connected wallet will be used."
-            ),
-        mptIssuanceID: z
-            .string()
-            .describe(
-                "The MPTokenIssuanceID of the MPT to modify (64-character hex string)."
-            ),
-        holder: z
-            .string()
-            .optional()
-            .describe(
-                "Optional: The account address of the holder to authorize/unauthorize. Required when using the authorization flags."
-            ),
-        lock: z
-            .boolean()
-            .optional()
-            .describe(
-                "If true, lock the MPT issuance (prevent further minting). If false, unlock it."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Set MPT Issuance",
+        description: "Modify the properties of an existing Multi-Purpose Token (MPT) issuance. Can lock/unlock the issuance or update holder authorization.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet (must be the issuer). If not provided, the connected wallet will be used."
+                ),
+            mptIssuanceID: z
+                .string()
+                .describe(
+                    "The MPTokenIssuanceID of the MPT to modify (64-character hex string)."
+                ),
+            holder: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional: The account address of the holder to authorize/unauthorize. Required when using the authorization flags."
+                ),
+            lock: z
+                .boolean()
+                .optional()
+                .describe(
+                    "If true, lock the MPT issuance (prevent further minting). If false, unlock it."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { idempotentHint: true },
     },
     async ({
         fromSeed,

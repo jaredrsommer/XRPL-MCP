@@ -10,16 +10,20 @@ import {
 } from "../core/state.js";
 
 // Register XRPL connection tool
-server.tool(
+server.registerTool(
     "connect-to-xrpl",
-    "Connect to XRP Ledger using seed from .env or create a new wallet",
     {
-        useSeedFromEnv: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the seed from .env file (true) or create a new wallet (false). Defaults to true if a seed is configured."
-            ),
+        title: "Connect to XRPL",
+        description: "Connect to XRP Ledger using seed from .env or create a new wallet",
+        inputSchema: {
+            useSeedFromEnv: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the seed from .env file (true) or create a new wallet (false). Defaults to true if a seed is configured."
+                ),
+
+        },
     },
     async ({ useSeedFromEnv }) => {
         let client: Client | null = null;

@@ -5,65 +5,69 @@ import { getXrplClient } from "../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../core/state.js";
 
-server.tool(
+server.registerTool(
     "deposit-preauth",
-    "Grant or revoke preauthorization for an account to deliver payments to your account",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        authorize: z
-            .string()
-            .optional()
-            .describe(
-                "Account address to preauthorize for sending payments to you"
-            ),
-        authorizeCredentials: z
-            .array(
-                z.object({
-                    issuer: z.string().describe("The issuer of the credential"),
-                    credentialType: z
-                        .string()
-                        .describe(
-                            "The credential type of the credential (in hex)"
-                        ),
-                })
-            )
-            .optional()
-            .describe(
-                "A set of credentials to authorize (requires Credentials amendment)"
-            ),
-        unauthorize: z
-            .string()
-            .optional()
-            .describe(
-                "Account address whose preauthorization should be revoked"
-            ),
-        unauthorizeCredentials: z
-            .array(
-                z.object({
-                    issuer: z.string().describe("The issuer of the credential"),
-                    credentialType: z
-                        .string()
-                        .describe(
-                            "The credential type of the credential (in hex)"
-                        ),
-                })
-            )
-            .optional()
-            .describe(
-                "A set of credentials whose preauthorization should be revoked (requires Credentials amendment)"
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Deposit Preauth",
+        description: "Grant or revoke preauthorization for an account to deliver payments to your account",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            authorize: z
+                .string()
+                .optional()
+                .describe(
+                    "Account address to preauthorize for sending payments to you"
+                ),
+            authorizeCredentials: z
+                .array(
+                    z.object({
+                        issuer: z.string().describe("The issuer of the credential"),
+                        credentialType: z
+                            .string()
+                            .describe(
+                                "The credential type of the credential (in hex)"
+                            ),
+                    })
+                )
+                .optional()
+                .describe(
+                    "A set of credentials to authorize (requires Credentials amendment)"
+                ),
+            unauthorize: z
+                .string()
+                .optional()
+                .describe(
+                    "Account address whose preauthorization should be revoked"
+                ),
+            unauthorizeCredentials: z
+                .array(
+                    z.object({
+                        issuer: z.string().describe("The issuer of the credential"),
+                        credentialType: z
+                            .string()
+                            .describe(
+                                "The credential type of the credential (in hex)"
+                            ),
+                    })
+                )
+                .optional()
+                .describe(
+                    "A set of credentials whose preauthorization should be revoked (requires Credentials amendment)"
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

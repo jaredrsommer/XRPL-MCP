@@ -6,84 +6,88 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register token-escrow-create tool
-server.tool(
+server.registerTool(
     "token-escrow-create",
-    "Create an Escrow for fungible tokens (Trust Line Tokens or MPTs) on the XRP Ledger. Requires the TokenEscrow amendment. For Trust Line Tokens, the issuer must have lsfAllowTrustLineLocking enabled. For MPTs, the issuance must have lsfMPTCanEscrow enabled.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet (sender) to use. If not provided, the connected wallet will be used."
-            ),
-        tokenType: z
-            .enum(["trustline", "mpt"])
-            .describe(
-                "Type of token to escrow: 'trustline' for Trust Line Tokens (issued currencies) or 'mpt' for Multi-Purpose Tokens."
-            ),
-        // For Trust Line Tokens
-        currency: z
-            .string()
-            .optional()
-            .describe(
-                "Currency code for Trust Line Token escrow (e.g., 'USD', 'EUR'). Required when tokenType is 'trustline'."
-            ),
-        issuer: z
-            .string()
-            .optional()
-            .describe(
-                "Issuer account address for Trust Line Token escrow. Required when tokenType is 'trustline'."
-            ),
-        // For MPTs
-        mptIssuanceID: z
-            .string()
-            .optional()
-            .describe(
-                "MPTokenIssuanceID for MPT escrow (64-character hex string). Required when tokenType is 'mpt'."
-            ),
-        // Common fields
-        value: z
-            .string()
-            .describe("Amount of tokens to escrow."),
-        destination: z
-            .string()
-            .describe("Address of the recipient of the escrowed tokens."),
-        destinationTag: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Optional arbitrary unsigned 32-bit integer tag for the destination."
-            ),
-        condition: z
-            .string()
-            .optional()
-            .describe(
-                "Hex value representing a PREIMAGE-SHA-256 crypto-condition. If provided, escrow can only be finished with the preimage."
-            ),
-        finishAfter: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Timestamp (seconds since Ripple Epoch) after which the escrow can be finished."
-            ),
-        cancelAfter: z
-            .number()
-            .int()
-            .positive()
-            .describe(
-                "Timestamp (seconds since Ripple Epoch) after which the escrow can be cancelled. REQUIRED for token escrows."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). Note: Token Escrow requires the TokenEscrow amendment."
-            ),
+        title: "Create Token Escrow",
+        description: "Create an Escrow for fungible tokens (Trust Line Tokens or MPTs) on the XRP Ledger. Requires the TokenEscrow amendment. For Trust Line Tokens, the issuer must have lsfAllowTrustLineLocking enabled. For MPTs, the issuance must have lsfMPTCanEscrow enabled.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet (sender) to use. If not provided, the connected wallet will be used."
+                ),
+            tokenType: z
+                .enum(["trustline", "mpt"])
+                .describe(
+                    "Type of token to escrow: 'trustline' for Trust Line Tokens (issued currencies) or 'mpt' for Multi-Purpose Tokens."
+                ),
+            // For Trust Line Tokens
+            currency: z
+                .string()
+                .optional()
+                .describe(
+                    "Currency code for Trust Line Token escrow (e.g., 'USD', 'EUR'). Required when tokenType is 'trustline'."
+                ),
+            issuer: z
+                .string()
+                .optional()
+                .describe(
+                    "Issuer account address for Trust Line Token escrow. Required when tokenType is 'trustline'."
+                ),
+            // For MPTs
+            mptIssuanceID: z
+                .string()
+                .optional()
+                .describe(
+                    "MPTokenIssuanceID for MPT escrow (64-character hex string). Required when tokenType is 'mpt'."
+                ),
+            // Common fields
+            value: z
+                .string()
+                .describe("Amount of tokens to escrow."),
+            destination: z
+                .string()
+                .describe("Address of the recipient of the escrowed tokens."),
+            destinationTag: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Optional arbitrary unsigned 32-bit integer tag for the destination."
+                ),
+            condition: z
+                .string()
+                .optional()
+                .describe(
+                    "Hex value representing a PREIMAGE-SHA-256 crypto-condition. If provided, escrow can only be finished with the preimage."
+                ),
+            finishAfter: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Timestamp (seconds since Ripple Epoch) after which the escrow can be finished."
+                ),
+            cancelAfter: z
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    "Timestamp (seconds since Ripple Epoch) after which the escrow can be cancelled. REQUIRED for token escrows."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). Note: Token Escrow requires the TokenEscrow amendment."
+                ),
+
+        },
     },
     async ({
         fromSeed,

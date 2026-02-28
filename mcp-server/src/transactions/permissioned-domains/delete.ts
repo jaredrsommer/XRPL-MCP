@@ -5,28 +5,33 @@ import { getXrplClient } from "../../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
-server.tool(
+server.registerTool(
     "permissioned-domain-delete",
-    "Delete a Permissioned Domain from the XRP Ledger. Only the domain owner can delete a domain.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the domain owner's wallet. If not provided, the connected wallet will be used."
-            ),
-        domainID: z
-            .string()
-            .describe(
-                "The ID of the Permissioned Domain to delete (64-character hex string)."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Delete Permissioned Domain",
+        description: "Delete a Permissioned Domain from the XRP Ledger. Only the domain owner can delete a domain.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the domain owner's wallet. If not provided, the connected wallet will be used."
+                ),
+            domainID: z
+                .string()
+                .describe(
+                    "The ID of the Permissioned Domain to delete (64-character hex string)."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({
         fromSeed,

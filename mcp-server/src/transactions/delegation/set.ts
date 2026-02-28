@@ -83,34 +83,38 @@ const PermissionValues: { [key: string]: number } = {
     AMMClawback: 0x00E1,
 };
 
-server.tool(
+server.registerTool(
     "delegate-set",
-    "Delegate transaction permissions to another account on the XRP Ledger. Allows an account to authorize another account to submit specific transaction types on their behalf. Note: AccountSet, SetRegularKey, SignerListSet, DelegateSet, and AccountDelete cannot be delegated for security reasons.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the delegator's wallet. If not provided, the connected wallet will be used."
-            ),
-        delegate: z
-            .string()
-            .describe(
-                "The account address to delegate permissions to."
-            ),
-        permissions: z
-            .array(z.string())
-            .optional()
-            .describe(
-                "List of permission names to grant (e.g., ['Payment', 'OfferCreate', 'NFTokenMint']). Use an empty array to revoke all permissions."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). Note: Permission Delegation may only be available on devnet."
-            ),
+        title: "Set Delegate",
+        description: "Delegate transaction permissions to another account on the XRP Ledger. Allows an account to authorize another account to submit specific transaction types on their behalf. Note: AccountSet, SetRegularKey, SignerListSet, DelegateSet, and AccountDelete cannot be delegated for security reasons.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the delegator's wallet. If not provided, the connected wallet will be used."
+                ),
+            delegate: z
+                .string()
+                .describe(
+                    "The account address to delegate permissions to."
+                ),
+            permissions: z
+                .array(z.string())
+                .optional()
+                .describe(
+                    "List of permission names to grant (e.g., ['Payment', 'OfferCreate', 'NFTokenMint']). Use an empty array to revoke all permissions."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). Note: Permission Delegation may only be available on devnet."
+                ),
+
+        },
     },
     async ({
         fromSeed,
@@ -234,22 +238,27 @@ server.tool(
     }
 );
 
-server.tool(
+server.registerTool(
     "delegate-list",
-    "List all delegate permissions for an account.",
     {
-        account: z
-            .string()
-            .optional()
-            .describe(
-                "The account address to list delegates for. If not provided, uses the connected wallet."
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "List Delegates",
+        description: "List all delegate permissions for an account.",
+        inputSchema: {
+            account: z
+                .string()
+                .optional()
+                .describe(
+                    "The account address to list delegates for. If not provided, uses the connected wallet."
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ account, useTestnet }) => {
         let client: Client | null = null;
@@ -344,10 +353,15 @@ server.tool(
     }
 );
 
-server.tool(
+server.registerTool(
     "delegate-list-permissions",
-    "List all available permission names that can be delegated.",
-    {},
+    {
+        title: "List Delegate Permissions",
+        description: "List all available permission names that can be delegated.",
+        inputSchema: {
+        },
+        annotations: { readOnlyHint: true },
+    },
     async () => {
         const permissionList = Object.entries(PermissionValues).map(([name, value]) => ({
             name,

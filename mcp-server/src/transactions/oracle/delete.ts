@@ -6,28 +6,33 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register oracle-delete tool
-server.tool(
+server.registerTool(
     "oracle-delete",
-    "Delete an Oracle object on the XRP Ledger Price Oracle amendment is required",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet that owns the oracle. If not provided, the connected wallet will be used."
-            ),
-        oracleDocumentID: z
-            .number()
-            .int()
-            .positive()
-            .describe("The ID of the Oracle object to delete."),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). Requires Price Oracle amendment enabled network. If not provided, uses the network from the connected wallet."
-            ),
+        title: "Delete Oracle",
+        description: "Delete an Oracle object on the XRP Ledger Price Oracle amendment is required",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet that owns the oracle. If not provided, the connected wallet will be used."
+                ),
+            oracleDocumentID: z
+                .number()
+                .int()
+                .positive()
+                .describe("The ID of the Oracle object to delete."),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). Requires Price Oracle amendment enabled network. If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({ fromSeed, oracleDocumentID, fee, useTestnet }) => {
         let client: Client | null = null;

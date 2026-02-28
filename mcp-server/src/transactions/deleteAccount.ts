@@ -6,37 +6,42 @@ import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../core/state.js";
 
 // Register delete-account tool
-server.tool(
+server.registerTool(
     "delete-account",
-    "Delete an XRP Ledger account and send remaining XRP to a destination account",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to delete. If not provided, the connected wallet will be used."
-            ),
-        destinationAccount: z
-            .string()
-            .describe(
-                "XRP Ledger account address to receive remaining XRP (starts with r)"
-            ),
-        destinationTag: z
-            .number()
-            .optional()
-            .describe("Optional destination tag to identify the recipient"),
-        fee: z
-            .string()
-            .optional()
-            .describe(
-                "Transaction fee (in XRP). Must be at least 0.2 XRP for account deletion."
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Delete Account",
+        description: "Delete an XRP Ledger account and send remaining XRP to a destination account",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to delete. If not provided, the connected wallet will be used."
+                ),
+            destinationAccount: z
+                .string()
+                .describe(
+                    "XRP Ledger account address to receive remaining XRP (starts with r)"
+                ),
+            destinationTag: z
+                .number()
+                .optional()
+                .describe("Optional destination tag to identify the recipient"),
+            fee: z
+                .string()
+                .optional()
+                .describe(
+                    "Transaction fee (in XRP). Must be at least 0.2 XRP for account deletion."
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({
         fromSeed,

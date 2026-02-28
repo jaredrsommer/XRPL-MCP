@@ -7,59 +7,63 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register escrow-create tool
-server.tool(
+server.registerTool(
     "escrow-create",
-    "Create an Escrow on the XRP Ledger to hold funds until a condition is met or time passes",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet (sender) to use. If not provided, the connected wallet will be used."
-            ),
-        amount: z
-            .string()
-            .describe("Amount of XRP, in drops, to hold in escrow"),
-        destination: z
-            .string()
-            .describe("Address of the recipient of the escrowed funds"),
-        destinationTag: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Optional arbitrary unsigned 32-bit integer tag for the destination."
-            ),
-        condition: z
-            .string()
-            .optional()
-            .describe(
-                "Hex value representing a PREIMAGE-SHA-256 crypto-condition. If provided, escrow can only be finished with the preimage."
-            ),
-        finishAfter: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Timestamp (seconds since Ripple Epoch) after which the escrow can be finished."
-            ),
-        cancelAfter: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Timestamp (seconds since Ripple Epoch) after which the escrow can be cancelled."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Create Escrow",
+        description: "Create an Escrow on the XRP Ledger to hold funds until a condition is met or time passes",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet (sender) to use. If not provided, the connected wallet will be used."
+                ),
+            amount: z
+                .string()
+                .describe("Amount of XRP, in drops, to hold in escrow"),
+            destination: z
+                .string()
+                .describe("Address of the recipient of the escrowed funds"),
+            destinationTag: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Optional arbitrary unsigned 32-bit integer tag for the destination."
+                ),
+            condition: z
+                .string()
+                .optional()
+                .describe(
+                    "Hex value representing a PREIMAGE-SHA-256 crypto-condition. If provided, escrow can only be finished with the preimage."
+                ),
+            finishAfter: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Timestamp (seconds since Ripple Epoch) after which the escrow can be finished."
+                ),
+            cancelAfter: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Timestamp (seconds since Ripple Epoch) after which the escrow can be cancelled."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

@@ -10,40 +10,44 @@ const MPTokenAuthorizeFlags = {
     tfMPTUnauthorize: 0x0001,  // Remove authorization (issuer) or opt out (holder)
 };
 
-server.tool(
+server.registerTool(
     "mpt-authorize",
-    "Authorize an account to hold a Multi-Purpose Token (MPT), or as a holder, opt-in to hold an MPT. For MPTs with requireAuth flag, issuers must authorize holders before they can receive tokens.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet. If not provided, the connected wallet will be used."
-            ),
-        mptIssuanceID: z
-            .string()
-            .describe(
-                "The MPTokenIssuanceID of the MPT (64-character hex string)."
-            ),
-        holder: z
-            .string()
-            .optional()
-            .describe(
-                "The account address to authorize. Only used when the transaction sender is the issuer authorizing a holder. Omit when opting in as a holder."
-            ),
-        unauthorize: z
-            .boolean()
-            .optional()
-            .describe(
-                "If true, remove the authorization (issuer) or opt out of holding the token (holder). Default is false (authorize/opt-in)."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Authorize MPT",
+        description: "Authorize an account to hold a Multi-Purpose Token (MPT), or as a holder, opt-in to hold an MPT. For MPTs with requireAuth flag, issuers must authorize holders before they can receive tokens.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet. If not provided, the connected wallet will be used."
+                ),
+            mptIssuanceID: z
+                .string()
+                .describe(
+                    "The MPTokenIssuanceID of the MPT (64-character hex string)."
+                ),
+            holder: z
+                .string()
+                .optional()
+                .describe(
+                    "The account address to authorize. Only used when the transaction sender is the issuer authorizing a holder. Omit when opting in as a holder."
+                ),
+            unauthorize: z
+                .boolean()
+                .optional()
+                .describe(
+                    "If true, remove the authorization (issuer) or opt out of holding the token (holder). Default is false (authorize/opt-in)."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
     },
     async ({
         fromSeed,

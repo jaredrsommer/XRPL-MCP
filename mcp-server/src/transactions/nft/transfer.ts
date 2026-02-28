@@ -6,22 +6,26 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register transfer-nft tool
-server.tool(
+server.registerTool(
     "transfer-nft",
-    "Transfer NFT between addresses",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Seed of the wallet to send from, if not using connected wallet"
-            ),
-        toAddress: z.string().describe("Destination address"),
-        tokenID: z.string().describe("NFT token ID to transfer"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Transfer NFT",
+        description: "Transfer NFT between addresses",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Seed of the wallet to send from, if not using connected wallet"
+                ),
+            toAddress: z.string().describe("Destination address"),
+            tokenID: z.string().describe("NFT token ID to transfer"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
     },
     async ({ fromSeed, toAddress, tokenID, useTestnet }) => {
         let client: Client | null = null;

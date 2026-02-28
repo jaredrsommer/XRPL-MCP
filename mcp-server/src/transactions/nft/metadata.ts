@@ -6,15 +6,20 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { isConnectedToTestnet } from "../../core/state.js";
 
 // Register get-nft-metadata tool
-server.tool(
+server.registerTool(
     "get-nft-metadata",
-    "Get NFT collection and token metadata",
     {
-        tokenID: z.string().describe("NFT token ID"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Get NFT Metadata",
+        description: "Get NFT collection and token metadata",
+        inputSchema: {
+            tokenID: z.string().describe("NFT token ID"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ tokenID, useTestnet }) => {
         let client: Client | null = null;

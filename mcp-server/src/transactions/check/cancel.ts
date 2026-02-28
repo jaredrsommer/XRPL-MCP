@@ -6,28 +6,33 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register check-cancel tool
-server.tool(
+server.registerTool(
     "check-cancel",
-    "Cancel an uncashed Check on the XRP Ledger",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        checkID: z
-            .string()
-            .describe(
-                "The ID of the Check object to cancel, as a 64-character hexadecimal string."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Cancel Check",
+        description: "Cancel an uncashed Check on the XRP Ledger",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            checkID: z
+                .string()
+                .describe(
+                    "The ID of the Check object to cancel, as a 64-character hexadecimal string."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({ fromSeed, checkID, fee, useTestnet }) => {
         let client: Client | null = null;
