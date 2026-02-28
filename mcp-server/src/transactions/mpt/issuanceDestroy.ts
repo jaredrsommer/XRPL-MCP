@@ -1,9 +1,6 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 server.registerTool(
     "mpt-issuance-destroy",
@@ -11,11 +8,11 @@ server.registerTool(
         title: "Destroy MPT Issuance",
         description: "Destroy/delete a Multi-Purpose Token (MPT) issuance. The issuance must have zero outstanding tokens.",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet (must be the issuer). If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             mptIssuanceID: z
                 .string()
@@ -29,53 +26,33 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false)."
                 ),
-
         },
         annotations: { destructiveHint: true },
     },
     async ({
-        fromSeed,
+        walletName,
         mptIssuanceID,
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
-            const tx: any = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "MPTokenIssuanceDestroy",
-                Account: wallet.address,
                 MPTokenIssuanceID: mptIssuanceID,
             };
 
             if (fee) tx.Fee = fee;
 
-            const prepared = await client.autofill(tx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "mpt-issuance-destroy",
+                summary: {
+                    transactionType: "MPTokenIssuanceDestroy",
+                    fromAddress: "",
+                    description: `Destroy MPT issuance ${mptIssuanceID}`,
+                },
+            });
 
             return {
                 content: [
@@ -83,17 +60,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                mptIssuanceID,
-                                action: "destroyed",
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -114,10 +87,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

@@ -1,15 +1,7 @@
-import {
-    Client,
-    Wallet,
-    PaymentChannelClaim,
-    PaymentChannelClaimFlags,
-} from "xrpl";
-import * as xrpl from "xrpl";
+import { PaymentChannelClaimFlags } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 // Register payment-channel-claim tool
 server.registerTool(
@@ -18,11 +10,11 @@ server.registerTool(
         title: "Claim Payment Channel",
         description: "Claim funds from a Payment Channel on the XRP Ledger",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet claiming funds. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             channel: z
                 .string()
@@ -70,11 +62,10 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
     },
     async ({
-        fromSeed,
+        walletName,
         channel,
         balance,
         amount,
@@ -85,7 +76,6 @@ server.registerTool(
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
             // Validation for claim parameters
             if (!close && !balance && !amount) {
@@ -109,44 +99,25 @@ server.registerTool(
                 );
             }
 
-            // Determine which network to use
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
             // Create PaymentChannelClaim transaction
-            const claimTx: PaymentChannelClaim = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "PaymentChannelClaim",
-                Account: wallet.address,
                 Channel: channel,
-                Flags: 0, // Initialize flags
+                Flags: 0,
             };
 
             // Add claim-specific fields
             if (balance) {
-                claimTx.Balance = balance; // Amount in drops
+                tx.Balance = balance;
             }
             if (amount) {
-                claimTx.Amount = amount; // Amount in drops
+                tx.Amount = amount;
             }
             if (signature) {
-                claimTx.Signature = signature;
+                tx.Signature = signature;
             }
             if (publicKey) {
-                claimTx.PublicKey = publicKey;
+                tx.PublicKey = publicKey;
             }
 
             // Set flags
@@ -155,26 +126,30 @@ server.registerTool(
             if (close) flags |= PaymentChannelClaimFlags.tfClose;
 
             if (flags > 0) {
-                claimTx.Flags = flags;
+                tx.Flags = flags;
             }
 
             // Add optional fee if provided
             if (fee) {
-                claimTx.Fee = fee;
+                tx.Fee = fee;
             }
 
-            // Submit transaction
-            const prepared = await client.autofill(claimTx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
+            const description = close
+                ? `Close payment channel ${channel}`
+                : `Claim ${amount || balance} drops from payment channel ${channel}`;
 
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "payment-channel-claim",
+                summary: {
+                    transactionType: "PaymentChannelClaim",
+                    fromAddress: "",
+                    amount: amount || balance,
+                    currency: "XRP",
+                    description,
+                },
+            });
 
             return {
                 content: [
@@ -182,21 +157,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                account: wallet.address,
-                                channel,
-                                claimedAmount: amount,
-                                newBalance: balance,
-                                closed: close,
-                                renewed: renew,
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -217,10 +184,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

@@ -4,6 +4,7 @@ import { Wallet } from "xrpl";
 import { DEFAULT_SEED } from "./core/constants.js";
 import { getXrplClient } from "./core/services/clients.js";
 import { setConnectedWallet } from "./core/state.js";
+import { walletRegistry, loadCustodyConfig, initializeRegistry, } from "./core/custody/index.js";
 // Import tool files to register them
 import "./transactions/connect.js";
 import "./transactions/transfer.js";
@@ -71,6 +72,30 @@ import "./transactions/batch/submit.js";
 import "./transactions/nft/modify.js";
 // Permission Delegation - PermissionDelegation amendment
 import "./transactions/delegation/set.js";
+// Custody tools - transaction approval, wallet management, audit
+import "./transactions/custody/approve.js";
+import "./transactions/custody/wallets.js";
+import "./transactions/custody/audit-tool.js";
+// Initialize custody system from environment configuration
+function initializeCustody() {
+    try {
+        const config = loadCustodyConfig();
+        initializeRegistry(config, walletRegistry);
+        const wallets = walletRegistry.list();
+        if (wallets.length > 0) {
+            console.error(`Custody initialized: ${wallets.length} wallet(s) registered`);
+            for (const w of wallets) {
+                console.error(`  ${w.isDefault ? "*" : " "} ${w.name} (${w.address}) [${w.type}]`);
+            }
+        }
+        else {
+            console.error("No wallets configured. Use connect-to-xrpl tool or set XRPL_SEED env var.");
+        }
+    }
+    catch (error) {
+        console.error("Failed to initialize custody:", error instanceof Error ? error.message : String(error));
+    }
+}
 // Function to automatically connect to XRPL using the seed from .env
 async function connectToXrpl() {
     if (!DEFAULT_SEED) {
@@ -142,6 +167,8 @@ async function main() {
         const transport = new StdioServerTransport();
         await server.connect(transport);
         console.error("XRPL MCP Server running on stdio");
+        // Initialize custody system (wallet registry from env vars)
+        initializeCustody();
         // Handle cleanup
         process.on("SIGINT", async () => {
             console.error("Shutting down...");

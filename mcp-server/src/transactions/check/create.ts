@@ -1,10 +1,7 @@
-import { Client, Wallet } from "xrpl";
 import * as xrpl from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 server.registerTool(
     "check-create",
@@ -12,11 +9,11 @@ server.registerTool(
         title: "Create Check",
         description: "Create a Check that can be cashed by the destination account",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             destination: z
                 .string()
@@ -60,11 +57,11 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
+        annotations: { destructiveHint: true },
     },
     async ({
-        fromSeed,
+        walletName,
         destination,
         sendMax,
         destinationTag,
@@ -73,26 +70,7 @@ server.registerTool(
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            // Determine which network to use
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
             // Format amounts for the transaction
             const formatAmount = (asset: {
                 currency: string;
@@ -115,62 +93,54 @@ server.registerTool(
                 }
             };
 
-            // Create CheckCreate transaction
-            const checkCreateTx: any = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "CheckCreate",
-                Account: wallet.address,
                 Destination: destination,
                 SendMax: formatAmount(sendMax),
             };
 
-            // Add optional fields if provided
             if (destinationTag !== undefined) {
-                checkCreateTx.DestinationTag = destinationTag;
+                tx.DestinationTag = destinationTag;
             }
-
             if (expiration !== undefined) {
-                checkCreateTx.Expiration = expiration;
+                tx.Expiration = expiration;
             }
-
             if (invoiceID !== undefined) {
-                checkCreateTx.InvoiceID = invoiceID;
+                tx.InvoiceID = invoiceID;
             }
-
             if (fee) {
-                checkCreateTx.Fee = fee;
+                tx.Fee = fee;
             }
 
-            // Submit transaction
-            const prepared = await client.autofill(checkCreateTx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
-
-            // Extract CheckID from transaction metadata
-            let checkID = null;
-            if (
-                status === "success" &&
-                typeof result.result.meta !== "string" &&
-                result.result.meta &&
-                result.result.meta.AffectedNodes
-            ) {
-                for (const node of result.result.meta.AffectedNodes) {
-                    if (
-                        "CreatedNode" in node &&
-                        node.CreatedNode.LedgerEntryType === "Check"
-                    ) {
-                        checkID = node.CreatedNode.LedgerIndex;
-                        break;
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "check-create",
+                summary: {
+                    transactionType: "CheckCreate",
+                    fromAddress: "",
+                    toAddress: destination,
+                    amount: sendMax.value,
+                    currency: sendMax.currency,
+                    description: `Create Check for ${sendMax.value} ${sendMax.currency} to ${destination}`,
+                },
+                resultExtractor: (result) => {
+                    const meta = result.meta as any;
+                    let checkID = null;
+                    if (meta && meta.AffectedNodes) {
+                        for (const node of meta.AffectedNodes) {
+                            if (
+                                "CreatedNode" in node &&
+                                node.CreatedNode.LedgerEntryType === "Check"
+                            ) {
+                                checkID = node.CreatedNode.LedgerIndex;
+                                break;
+                            }
+                        }
                     }
-                }
-            }
+                    return { checkID: checkID || "Not found in metadata" };
+                },
+            });
 
             return {
                 content: [
@@ -178,23 +148,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                account: wallet.address,
-                                destination,
-                                sendMax,
-                                destinationTag:
-                                    destinationTag || "Not specified",
-                                expiration: expiration || "Not specified",
-                                invoiceID: invoiceID || "Not specified",
-                                checkID: checkID || "Not found in metadata",
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -215,10 +175,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

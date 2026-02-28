@@ -1,10 +1,7 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
-import { createDIDDocument, storeDIDDocument } from "../../core/utils.js";
+import { executor, walletRegistry } from "../../core/custody/index.js";
+import { createDIDDocument } from "../../core/utils.js";
 
 // Register create-did tool
 server.registerTool(
@@ -13,57 +10,57 @@ server.registerTool(
         title: "Create DID",
         description: "Create a decentralized identifier (DID) for an XRPL account",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Seed of the wallet to create DID for, if not using connected wallet"
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             useTestnet: z
                 .boolean()
                 .optional()
                 .describe("Whether to use testnet or mainnet"),
-
         },
     },
-    async ({ fromSeed, useTestnet }) => {
-        let client: Client | null = null;
+    async ({ walletName, useTestnet }) => {
         try {
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            const networkStr = useTestnetNetwork ? "testnet" : "mainnet";
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first or provide a fromSeed."
-                );
-            }
+            // Resolve wallet to get address and public key for DID document creation
+            const provider = walletRegistry.resolve(walletName);
+            const address = provider.getAddress();
+            const publicKey = provider.getPublicKey();
+            const networkStr = useTestnet ? "testnet" : "mainnet";
 
             // Create DID document
-            const didDocument = createDIDDocument(
-                wallet.address,
-                wallet.publicKey,
-                networkStr
-            );
+            const didDocument = createDIDDocument(address, publicKey, networkStr);
 
-            // Store DID document on the ledger
-            const result = await storeDIDDocument(client, wallet, didDocument);
+            // Build the DIDSet transaction with memo containing the DID document
+            const didDocumentStr = JSON.stringify(didDocument);
+            const tx: Record<string, unknown> = {
+                TransactionType: "AccountSet",
+                Memos: [
+                    {
+                        Memo: {
+                            MemoType: Buffer.from("did:document")
+                                .toString("hex")
+                                .toUpperCase(),
+                            MemoData: Buffer.from(didDocumentStr)
+                                .toString("hex")
+                                .toUpperCase(),
+                        },
+                    },
+                ],
+            };
 
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "create-did",
+                summary: {
+                    transactionType: "DIDSet",
+                    fromAddress: "",
+                    description: `Create DID for account ${address} (${networkStr})`,
+                },
+            });
 
             return {
                 content: [
@@ -71,17 +68,14 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
                                 did: didDocument.id,
-                                controller: wallet.address,
-                                transaction: result.result.hash,
-                                didDocument,
-                                _meta: {
-                                    network: useTestnetNetwork
-                                        ? TESTNET_URL
-                                        : MAINNET_URL,
-                                    networkType: networkStr,
-                                },
+                                message: result.message,
                             },
                             null,
                             2
@@ -102,10 +96,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

@@ -1,9 +1,8 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../server/server.js";
+import { executor, walletRegistry } from "../core/custody/index.js";
 import { getXrplClient } from "../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../core/state.js";
+import { isConnectedToTestnet } from "../core/state.js";
 
 // Register delete-account tool
 server.registerTool(
@@ -12,11 +11,11 @@ server.registerTool(
         title: "Delete Account",
         description: "Delete an XRP Ledger account and send remaining XRP to a destination account",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet to delete. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             destinationAccount: z
                 .string()
@@ -39,58 +38,35 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
         annotations: { destructiveHint: true },
     },
     async ({
-        fromSeed,
+        walletName,
         destinationAccount,
         destinationTag,
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            // Determine which network to use
+            // Resolve wallet to get address for pre-validation
+            const provider = walletRegistry.resolve(walletName);
+            const address = provider.getAddress();
+
             const useTestnetNetwork =
                 useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
 
             // Set default fee to 0.2 XRP (minimum required for account deletion)
             const accountDeleteFee = fee || "200000"; // 0.2 XRP in drops
 
-            // Create AccountDelete transaction
-            const deleteTransaction: any = {
-                TransactionType: "AccountDelete",
-                Account: wallet.address,
-                Destination: destinationAccount,
-                Fee: accountDeleteFee,
-            };
-
-            // Add destination tag if provided
-            if (destinationTag !== undefined) {
-                deleteTransaction.DestinationTag = destinationTag;
-            }
-
-            // Get account info to check if deletion is possible
+            // Pre-validation: check if deletion is possible
+            let client = null;
             try {
+                client = await getXrplClient(useTestnetNetwork);
+
                 const accountInfo = await client.request({
                     command: "account_info",
-                    account: wallet.address,
+                    account: address,
                     ledger_index: "validated",
                 });
 
@@ -104,25 +80,34 @@ server.registerTool(
                         "Account sequence number is too high for deletion. The sequence plus 256 must be less than the current ledger index."
                     );
                 }
-            } catch (error) {
-                if (error instanceof Error) {
-                    throw error;
-                }
-                throw new Error("Failed to validate account for deletion");
+            } finally {
+                if (client) await client.disconnect();
             }
 
-            // Submit with fail_hard to avoid paying the fee if deletion fails
-            const prepared = await client.autofill(deleteTransaction);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
+            // Create AccountDelete transaction
+            const tx: Record<string, unknown> = {
+                TransactionType: "AccountDelete",
+                Destination: destinationAccount,
+                Fee: accountDeleteFee,
+            };
 
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
+            // Add destination tag if provided
+            if (destinationTag !== undefined) {
+                tx.DestinationTag = destinationTag;
             }
+
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "delete-account",
+                summary: {
+                    transactionType: "AccountDelete",
+                    fromAddress: "",
+                    toAddress: destinationAccount,
+                    fee: accountDeleteFee,
+                    description: `Delete account ${address} and send remaining XRP to ${destinationAccount}`,
+                },
+            });
 
             return {
                 content: [
@@ -130,19 +115,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                deletedAccount: wallet.address,
-                                destinationAccount,
-                                destinationTag,
-                                fee: accountDeleteFee,
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -163,10 +142,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

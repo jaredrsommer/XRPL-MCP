@@ -1,9 +1,6 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
@@ -12,13 +9,14 @@ server.registerTool(
     "nft-modify",
     {
         title: "Modify NFT",
-        description: "Modify the URI of a dynamic NFT (dNFT) on the XRP Ledger. The NFT must have been minted with the tfMutable flag enabled. Only the issuer or their authorized minter can modify the URI.",
+        description:
+            "Modify the URI of a dynamic NFT (dNFT) on the XRP Ledger. The NFT must have been minted with the tfMutable flag enabled. Only the issuer or their authorized minter can modify the URI.",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the issuer's or authorized minter's wallet. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             nftokenID: z
                 .string()
@@ -44,38 +42,13 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false)."
                 ),
-
         },
+        annotations: { destructiveHint: true },
     },
-    async ({
-        fromSeed,
-        nftokenID,
-        uri,
-        owner,
-        fee,
-        useTestnet,
-    }) => {
-        let client: Client | null = null;
+    async ({ walletName, nftokenID, uri, owner, fee, useTestnet }) => {
         try {
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
-            const tx: any = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "NFTokenModify",
-                Account: wallet.address,
                 NFTokenID: nftokenID,
             };
 
@@ -92,19 +65,20 @@ server.registerTool(
                 tx.Owner = owner;
             }
 
-            if (fee) tx.Fee = fee;
-
-            const prepared = await client.autofill(tx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
+            if (fee) {
+                tx.Fee = fee;
             }
+
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "nft-modify",
+                summary: {
+                    transactionType: "NFTokenModify",
+                    fromAddress: "",
+                    description: `Modify NFT ${nftokenID} URI to ${uri !== undefined ? (uri === "" ? "(clear)" : uri) : "(unchanged)"}`,
+                },
+            });
 
             return {
                 content: [
@@ -112,21 +86,14 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                nftokenID,
-                                newUri: uri ?? "(unchanged)",
-                                newUriHex: uri ? toHex(uri) : "(unchanged)",
-                                modifiedBy: wallet.address,
-                                owner: owner ?? wallet.address,
-                                note: "NFT URI successfully updated. The NFT must have tfMutable flag for this to work.",
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType:
+                                    result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -147,10 +114,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

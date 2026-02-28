@@ -1,9 +1,6 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
@@ -14,11 +11,11 @@ server.registerTool(
         title: "Set Permissioned Domain",
         description: "Create or modify a Permissioned Domain on the XRP Ledger. Permissioned Domains define access rules based on credentials, allowing only authorized accounts (those with accepted credentials from specified issuers) to participate in certain activities.",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the domain owner's wallet. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             domainID: z
                 .string()
@@ -49,35 +46,17 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false)."
                 ),
-
         },
         annotations: { idempotentHint: true },
     },
     async ({
-        fromSeed,
+        walletName,
         domainID,
         acceptedCredentials,
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
             // Format accepted credentials
             const formattedCredentials = acceptedCredentials.map((cred) => ({
                 Credential: {
@@ -86,9 +65,8 @@ server.registerTool(
                 },
             }));
 
-            const tx: any = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "PermissionedDomainSet",
-                Account: wallet.address,
                 AcceptedCredentials: formattedCredentials,
             };
 
@@ -98,29 +76,29 @@ server.registerTool(
 
             if (fee) tx.Fee = fee;
 
-            const prepared = await client.autofill(tx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
+            const action = domainID ? "modify" : "create";
 
-            let status = "unknown";
-            let newDomainID: string | undefined;
-
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-
-                // Extract new domain ID if created
-                if (!domainID) {
-                    const createdNodes = (result.result.meta as any).AffectedNodes?.filter(
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "permissioned-domain-set",
+                summary: {
+                    transactionType: "PermissionedDomainSet",
+                    fromAddress: "",
+                    description: `${action} permissioned domain${domainID ? ` ${domainID}` : ""} with ${acceptedCredentials.length} credential(s)`,
+                },
+                resultExtractor: (result) => {
+                    const meta = result.meta as any;
+                    if (!meta?.AffectedNodes) return {};
+                    const createdNodes = meta.AffectedNodes.filter(
                         (node: any) => node.CreatedNode?.LedgerEntryType === "PermissionedDomain"
                     );
                     if (createdNodes?.length > 0) {
-                        newDomainID = createdNodes[0].CreatedNode.LedgerIndex;
+                        return { newDomainID: createdNodes[0].CreatedNode.LedgerIndex };
                     }
-                }
-            }
+                    return {};
+                },
+            });
 
             return {
                 content: [
@@ -128,23 +106,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                domainID: newDomainID ?? domainID,
-                                action: domainID ? "modified" : "created",
-                                owner: wallet.address,
-                                acceptedCredentials: acceptedCredentials.map((c) => ({
-                                    issuer: c.issuer,
-                                    credentialType: c.credentialType,
-                                    credentialTypeHex: toHex(c.credentialType),
-                                })),
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -165,10 +133,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

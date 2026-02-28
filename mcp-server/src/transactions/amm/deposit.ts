@@ -1,51 +1,13 @@
-import { Client, XrplError, Wallet } from "xrpl";
-import * as xrpl from "xrpl";
+import { xrpToDrops } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor } from "../../core/custody/index.js";
 
 // Define asset type
 type Asset = {
     currency: string;
     issuer?: string;
     value?: string;
-};
-
-// Define the transaction type for AMMDeposit
-type AMMDepositTransaction = {
-    TransactionType: "AMMDeposit";
-    Account: string;
-    Asset: {
-        currency: string;
-        issuer?: string;
-    };
-    Asset2: {
-        currency: string;
-        issuer?: string;
-    };
-    Amount?:
-        | string
-        | {
-              currency: string;
-              issuer?: string;
-              value: string;
-          };
-    Amount2?:
-        | string
-        | {
-              currency: string;
-              issuer?: string;
-              value: string;
-          };
-    LPTokenOut?: {
-        currency: string;
-        issuer: string;
-        value: string;
-    };
-    Flags?: number;
-    Fee?: string;
 };
 
 // Register amm-deposit tool
@@ -55,11 +17,11 @@ server.registerTool(
         title: "AMM Deposit",
         description: "Deposit assets into an existing Automated Market Maker (AMM) on the XRP Ledger",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             asset1: z
                 .object({
@@ -142,11 +104,10 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
     },
     async ({
-        fromSeed,
+        walletName,
         asset1,
         asset2,
         amount1,
@@ -156,23 +117,7 @@ server.registerTool(
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            // Determine which network to use
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-            client = await getXrplClient(useTestnetNetwork);
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
             // Format assets for the transaction
             const formatAsset = (
                 asset: Asset
@@ -186,6 +131,7 @@ server.registerTool(
                     };
                 }
             };
+
             // Format amounts for the transaction
             const formatAmount = (
                 asset: Asset
@@ -193,7 +139,7 @@ server.registerTool(
                 | string
                 | { currency: string; issuer?: string; value: string } => {
                 if (asset.currency === "XRP") {
-                    return xrpl.xrpToDrops(asset.value || "0");
+                    return xrpToDrops(asset.value || "0");
                 } else {
                     return {
                         currency: asset.currency,
@@ -202,64 +148,61 @@ server.registerTool(
                     };
                 }
             };
+
             // Create AMMDeposit transaction
-            const ammDepositTx: AMMDepositTransaction = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "AMMDeposit",
-                Account: wallet.address,
                 Asset: formatAsset(asset1),
                 Asset2: formatAsset(asset2),
             };
+
             // Add optional fields if provided
             if (amount1) {
-                ammDepositTx.Amount = formatAmount(amount1);
+                tx.Amount = formatAmount(amount1);
             }
             if (amount2) {
-                ammDepositTx.Amount2 = formatAmount(amount2);
+                tx.Amount2 = formatAmount(amount2);
             }
             if (lpTokensOut) {
-                ammDepositTx.LPTokenOut = lpTokensOut;
+                tx.LPTokenOut = lpTokensOut;
             }
+
             // Set flags if needed
             if (singleAsset) {
                 // Set the tfSingleAsset flag (0x00080000 = 524288)
-                ammDepositTx.Flags = 0x00080000;
+                tx.Flags = 0x00080000;
             }
+
             if (fee) {
-                ammDepositTx.Fee = fee;
+                tx.Fee = fee;
             }
-            // Submit transaction
-            const prepared = await client.autofill(ammDepositTx as any);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
+
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "amm-deposit",
+                summary: {
+                    transactionType: "AMMDeposit",
+                    fromAddress: "",
+                    amount: amount1?.value || amount2?.value,
+                    currency: amount1?.currency || amount2?.currency,
+                    description: `Deposit into AMM pool ${asset1.currency}/${asset2.currency}${singleAsset ? " (single asset)" : ""}`,
+                },
+            });
+
             return {
                 content: [
                     {
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                account: wallet.address,
-                                asset1,
-                                asset2,
-                                amount1: amount1 || "Not specified",
-                                amount2: amount2 || "Not specified",
-                                lpTokensOut: lpTokensOut || "Not specified",
-                                singleAsset: singleAsset || false,
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -280,10 +223,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

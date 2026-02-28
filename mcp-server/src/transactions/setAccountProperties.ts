@@ -1,9 +1,6 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../server/server.js";
-import { getXrplClient } from "../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../core/state.js";
+import { executor } from "../core/custody/index.js";
 
 // Register set-account-properties tool
 server.registerTool(
@@ -12,11 +9,11 @@ server.registerTool(
         title: "Set Account Properties",
         description: "Set or modify account properties on the XRP Ledger",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the wallet to modify. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             domain: z
                 .string()
@@ -59,12 +56,11 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
         annotations: { idempotentHint: true },
     },
     async ({
-        fromSeed,
+        walletName,
         domain,
         emailHash,
         messageKey,
@@ -75,83 +71,41 @@ server.registerTool(
         fee,
         useTestnet,
     }) => {
-        let client: Client | null = null;
         try {
-            // Determine which network to use
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
             // Create AccountSet transaction
-            const accountSetTx: any = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "AccountSet",
-                Account: wallet.address,
             };
 
             // Add optional fields if provided
-            if (domain !== undefined) {
-                accountSetTx.Domain = domain;
-            }
+            if (domain !== undefined) tx.Domain = domain;
+            if (emailHash !== undefined) tx.EmailHash = emailHash;
+            if (messageKey !== undefined) tx.MessageKey = messageKey;
+            if (transferRate !== undefined) tx.TransferRate = transferRate;
+            if (tickSize !== undefined) tx.TickSize = tickSize;
+            if (setFlag !== undefined) tx.SetFlag = setFlag;
+            if (clearFlag !== undefined) tx.ClearFlag = clearFlag;
+            if (fee !== undefined) tx.Fee = fee;
 
-            if (emailHash !== undefined) {
-                accountSetTx.EmailHash = emailHash;
-            }
+            // Build description of what's being changed
+            const changes: string[] = [];
+            if (domain !== undefined) changes.push("domain");
+            if (emailHash !== undefined) changes.push("emailHash");
+            if (messageKey !== undefined) changes.push("messageKey");
+            if (transferRate !== undefined) changes.push("transferRate");
+            if (tickSize !== undefined) changes.push("tickSize");
+            if (setFlag !== undefined) changes.push(`setFlag(${setFlag})`);
+            if (clearFlag !== undefined) changes.push(`clearFlag(${clearFlag})`);
 
-            if (messageKey !== undefined) {
-                accountSetTx.MessageKey = messageKey;
-            }
-
-            if (transferRate !== undefined) {
-                accountSetTx.TransferRate = transferRate;
-            }
-
-            if (tickSize !== undefined) {
-                accountSetTx.TickSize = tickSize;
-            }
-
-            if (setFlag !== undefined) {
-                accountSetTx.SetFlag = setFlag;
-            }
-
-            if (clearFlag !== undefined) {
-                accountSetTx.ClearFlag = clearFlag;
-            }
-
-            if (fee !== undefined) {
-                accountSetTx.Fee = fee;
-            }
-
-            // Submit transaction
-            const prepared = await client.autofill(accountSetTx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
-
-            // Get updated account info
-            const accountInfo = await client.request({
-                command: "account_info",
-                account: wallet.address,
-                ledger_index: "validated",
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "set-account-properties",
+                summary: {
+                    transactionType: "AccountSet",
+                    fromAddress: "",
+                    description: `Set account properties: ${changes.join(", ") || "no changes"}`,
+                },
             });
 
             return {
@@ -160,48 +114,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                account: wallet.address,
-                                updatedProperties: {
-                                    domain:
-                                        domain !== undefined
-                                            ? domain
-                                            : undefined,
-                                    emailHash:
-                                        emailHash !== undefined
-                                            ? emailHash
-                                            : undefined,
-                                    messageKey:
-                                        messageKey !== undefined
-                                            ? messageKey
-                                            : undefined,
-                                    transferRate:
-                                        transferRate !== undefined
-                                            ? transferRate
-                                            : undefined,
-                                    tickSize:
-                                        tickSize !== undefined
-                                            ? tickSize
-                                            : undefined,
-                                    setFlag:
-                                        setFlag !== undefined
-                                            ? setFlag
-                                            : undefined,
-                                    clearFlag:
-                                        clearFlag !== undefined
-                                            ? clearFlag
-                                            : undefined,
-                                },
-                                accountFlags:
-                                    accountInfo.result.account_data.Flags,
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -222,10 +141,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );

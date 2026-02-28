@@ -1,9 +1,6 @@
-import { Client, Wallet } from "xrpl";
 import { z } from "zod";
 import { server } from "../../server/server.js";
-import { getXrplClient } from "../../core/services/clients.js";
-import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
-import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
+import { executor, walletRegistry } from "../../core/custody/index.js";
 
 server.registerTool(
     "token-clawback",
@@ -11,11 +8,11 @@ server.registerTool(
         title: "Token Clawback",
         description: "Claw back tokens issued by your account from a holder",
         inputSchema: {
-            fromSeed: z
+            walletName: z
                 .string()
                 .optional()
                 .describe(
-                    "Optional seed of the issuer wallet to use. If not provided, the connected wallet will be used."
+                    "Optional name of the registered wallet to use. If not provided, the default wallet will be used."
                 ),
             amount: z
                 .object({
@@ -37,71 +34,50 @@ server.registerTool(
                 .describe(
                     "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
                 ),
-
         },
         annotations: { destructiveHint: true },
     },
-    async ({ fromSeed, amount, fee, useTestnet }) => {
-        let client: Client | null = null;
+    async ({ walletName, amount, fee, useTestnet }) => {
         try {
-            // Determine which network to use
-            const useTestnetNetwork =
-                useTestnet !== undefined ? useTestnet : isConnectedToTestnet;
-
-            client = await getXrplClient(useTestnetNetwork);
-
-            // Use provided seed or connected wallet
-            let wallet: Wallet;
-            if (fromSeed) {
-                wallet = Wallet.fromSeed(fromSeed);
-            } else if (connectedWallet) {
-                wallet = connectedWallet;
-            } else {
-                throw new Error(
-                    "No wallet connected. Please connect first using connect-to-xrpl tool or provide a fromSeed."
-                );
-            }
-
             // Validate amount
             if (parseFloat(amount.value) <= 0) {
                 throw new Error("Clawback amount must be greater than zero");
             }
 
             // Validate holder address is not the same as issuer
-            if (amount.issuer === wallet.address) {
+            const provider = walletRegistry.resolve(walletName);
+            if (amount.issuer === provider.getAddress()) {
                 throw new Error(
                     "Holder address (in amount.issuer) cannot be the same as the issuer account"
                 );
             }
 
             // Create Clawback transaction
-            const clawbackTx: any = {
+            const tx: Record<string, unknown> = {
                 TransactionType: "Clawback",
-                Account: wallet.address, // The issuer
                 Amount: {
                     currency: amount.currency,
-                    issuer: amount.issuer, // The holder's address
+                    issuer: amount.issuer,
                     value: amount.value,
                 },
             };
 
-            // Add optional fee if provided
             if (fee) {
-                clawbackTx.Fee = fee;
+                tx.Fee = fee;
             }
 
-            // Submit transaction
-            const prepared = await client.autofill(clawbackTx);
-            const signed = wallet.sign(prepared);
-            const result = await client.submitAndWait(signed.tx_blob);
-
-            let status = "unknown";
-            if (typeof result.result.meta !== "string" && result.result.meta) {
-                status =
-                    result.result.meta.TransactionResult === "tesSUCCESS"
-                        ? "success"
-                        : "failed";
-            }
+            const result = await executor.prepare(tx, {
+                walletName,
+                useTestnet,
+                toolName: "token-clawback",
+                summary: {
+                    transactionType: "Clawback",
+                    fromAddress: "",
+                    amount: amount.value,
+                    currency: amount.currency,
+                    description: `Claw back ${amount.value} ${amount.currency} from holder ${amount.issuer}`,
+                },
+            });
 
             return {
                 content: [
@@ -109,19 +85,13 @@ server.registerTool(
                         type: "text",
                         text: JSON.stringify(
                             {
-                                status,
-                                hash: result.result.hash,
-                                issuer: wallet.address,
-                                holder: amount.issuer,
-                                currency: amount.currency,
-                                amount: amount.value,
-                                network: useTestnetNetwork
-                                    ? TESTNET_URL
-                                    : MAINNET_URL,
-                                networkType: useTestnetNetwork
-                                    ? "testnet"
-                                    : "mainnet",
-                                result: result.result,
+                                status: "pending_approval",
+                                transactionId: result.pendingTransaction.id,
+                                summary: result.pendingTransaction.summary,
+                                expiresAt: result.pendingTransaction.expiresAt,
+                                network: result.pendingTransaction.network,
+                                networkType: result.pendingTransaction.networkType,
+                                message: result.message,
                             },
                             null,
                             2
@@ -142,10 +112,6 @@ server.registerTool(
                     },
                 ],
             };
-        } finally {
-            if (client) {
-                await client.disconnect();
-            }
         }
     }
 );
