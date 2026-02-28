@@ -6,16 +6,21 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { isConnectedToTestnet } from "../../core/state.js";
 
 // Register get-token-metadata tool
-server.tool(
+server.registerTool(
     "get-token-metadata",
-    "Get token metadata (name, symbol, decimals, supply)",
     {
-        tokenID: z.string().describe("Currency code or token identifier"),
-        issuer: z.string().describe("Issuer address for the token"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Get Token Metadata",
+        description: "Get token metadata (name, symbol, decimals, supply)",
+        inputSchema: {
+            tokenID: z.string().describe("Currency code or token identifier"),
+            issuer: z.string().describe("Issuer address for the token"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ tokenID, issuer, useTestnet }) => {
         let client: Client | null = null;

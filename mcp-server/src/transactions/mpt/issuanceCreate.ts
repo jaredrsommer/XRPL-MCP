@@ -18,81 +18,85 @@ const MPTokenIssuanceCreateFlags = {
     tfMPTCanClawback: 0x0040,    // Issuer can clawback tokens
 };
 
-server.tool(
+server.registerTool(
     "mpt-issuance-create",
-    "Create a new Multi-Purpose Token (MPT) issuance on the XRP Ledger. MPTs are optimized fungible tokens for use cases like stablecoins.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        assetScale: z
-            .number()
-            .int()
-            .min(0)
-            .max(10)
-            .optional()
-            .describe(
-                "Number of decimal places for the token (0-10). For example, 2 means the smallest unit is 0.01"
-            ),
-        maxAmount: z
-            .string()
-            .optional()
-            .describe(
-                "Maximum amount of tokens that can ever be issued. Leave empty for unlimited supply."
-            ),
-        transferFee: z
-            .number()
-            .int()
-            .min(0)
-            .max(50000)
-            .optional()
-            .describe(
-                "Transfer fee in basis points (0-50000, where 1000 = 1%). Fee charged when tokens are transferred between holders."
-            ),
-        metadata: z
-            .string()
-            .optional()
-            .describe(
-                "Arbitrary metadata for the token (will be hex-encoded). Can include token name, description, etc."
-            ),
-        canLock: z
-            .boolean()
-            .optional()
-            .describe("If true, the issuer can lock individual token holders."),
-        requireAuth: z
-            .boolean()
-            .optional()
-            .describe(
-                "If true, holders must be authorized by the issuer before they can hold tokens."
-            ),
-        canEscrow: z
-            .boolean()
-            .optional()
-            .describe("If true, tokens can be placed in escrow."),
-        canTrade: z
-            .boolean()
-            .optional()
-            .describe("If true, tokens can be traded on the DEX."),
-        canTransfer: z
-            .boolean()
-            .optional()
-            .describe(
-                "If true, tokens can be transferred between holders. Set to false for non-transferable tokens."
-            ),
-        canClawback: z
-            .boolean()
-            .optional()
-            .describe("If true, the issuer can claw back tokens from holders."),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Create MPT Issuance",
+        description: "Create a new Multi-Purpose Token (MPT) issuance on the XRP Ledger. MPTs are optimized fungible tokens for use cases like stablecoins.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            assetScale: z
+                .number()
+                .int()
+                .min(0)
+                .max(10)
+                .optional()
+                .describe(
+                    "Number of decimal places for the token (0-10). For example, 2 means the smallest unit is 0.01"
+                ),
+            maxAmount: z
+                .string()
+                .optional()
+                .describe(
+                    "Maximum amount of tokens that can ever be issued. Leave empty for unlimited supply."
+                ),
+            transferFee: z
+                .number()
+                .int()
+                .min(0)
+                .max(50000)
+                .optional()
+                .describe(
+                    "Transfer fee in basis points (0-50000, where 1000 = 1%). Fee charged when tokens are transferred between holders."
+                ),
+            metadata: z
+                .string()
+                .optional()
+                .describe(
+                    "Arbitrary metadata for the token (will be hex-encoded). Can include token name, description, etc."
+                ),
+            canLock: z
+                .boolean()
+                .optional()
+                .describe("If true, the issuer can lock individual token holders."),
+            requireAuth: z
+                .boolean()
+                .optional()
+                .describe(
+                    "If true, holders must be authorized by the issuer before they can hold tokens."
+                ),
+            canEscrow: z
+                .boolean()
+                .optional()
+                .describe("If true, tokens can be placed in escrow."),
+            canTrade: z
+                .boolean()
+                .optional()
+                .describe("If true, tokens can be traded on the DEX."),
+            canTransfer: z
+                .boolean()
+                .optional()
+                .describe(
+                    "If true, tokens can be transferred between holders. Set to false for non-transferable tokens."
+                ),
+            canClawback: z
+                .boolean()
+                .optional()
+                .describe("If true, the issuer can claw back tokens from holders."),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

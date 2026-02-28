@@ -6,45 +6,49 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register escrow-finish tool
-server.tool(
+server.registerTool(
     "escrow-finish",
-    "Finish an Escrow on the XRP Ledger, releasing funds to the recipient",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet executing the finish. If not provided, the connected wallet will be used."
-            ),
-        owner: z
-            .string()
-            .describe("Address of the account that created the escrow"),
-        offerSequence: z
-            .number()
-            .int()
-            .positive()
-            .describe(
-                "Transaction sequence number of the EscrowCreate transaction that created the escrow"
-            ),
-        condition: z
-            .string()
-            .optional()
-            .describe(
-                "Hex value matching the one supplied in EscrowCreate (if conditional escrow)."
-            ),
-        fulfillment: z
-            .string()
-            .optional()
-            .describe(
-                "Hex value of the PREIMAGE-SHA-256 fulfillment matching the condition (if conditional escrow)."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Finish Escrow",
+        description: "Finish an Escrow on the XRP Ledger, releasing funds to the recipient",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet executing the finish. If not provided, the connected wallet will be used."
+                ),
+            owner: z
+                .string()
+                .describe("Address of the account that created the escrow"),
+            offerSequence: z
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    "Transaction sequence number of the EscrowCreate transaction that created the escrow"
+                ),
+            condition: z
+                .string()
+                .optional()
+                .describe(
+                    "Hex value matching the one supplied in EscrowCreate (if conditional escrow)."
+                ),
+            fulfillment: z
+                .string()
+                .optional()
+                .describe(
+                    "Hex value of the PREIMAGE-SHA-256 fulfillment matching the condition (if conditional escrow)."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

@@ -5,15 +5,14 @@
     },
     "scripts": {
         "build": "tsc && chmod 755 build/index.js",
-        "start": "npx mcp-proxy --port 8080 --endpoint /sse npx tsx src/index.ts"
+        "start": "npx tsx src/index.ts"
     },
     "files": [
         "build"
     ],
     "dependencies": {
-        "@modelcontextprotocol/sdk": "^1.25.1",
+        "@modelcontextprotocol/sdk": "^1.27.1",
         "dotenv": "^16.4.7",
-        "mcp-proxy": "^2.12.2",
         "xrpl": "^4.2.0",
         "zod": "^3.24.2"
     },

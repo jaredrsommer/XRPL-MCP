@@ -6,22 +6,27 @@ import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../core/state.js";
 
 // Register XRPL get-account-info tool
-server.tool(
+server.registerTool(
     "get-account-info",
-    "Get account information from the XRP Ledger",
     {
-        address: z
-            .string()
-            .optional()
-            .describe(
-                "XRP Ledger account address (starts with r). If not provided, uses the connected wallet's address."
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Get Account Info",
+        description: "Get account information from the XRP Ledger",
+        inputSchema: {
+            address: z
+                .string()
+                .optional()
+                .describe(
+                    "XRP Ledger account address (starts with r). If not provided, uses the connected wallet's address."
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ address, useTestnet }) => {
         let client: Client | null = null;

@@ -9,80 +9,85 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
 
 // Register oracle-set tool
-server.tool(
+server.registerTool(
     "oracle-set",
-    "Set or update Oracle data on the XRP Ledger (Requires Price Oracle amendment)",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet that owns the oracle. If not provided, the connected wallet will be used."
-            ),
-        oracleDocumentID: z
-            .number()
-            .int()
-            .positive()
-            .describe("The ID of the Oracle object to set/update."),
-        lastUpdateTime: z
-            .number()
-            .int()
-            .positive()
-            .describe(
-                "Timestamp of the last update (seconds since Ripple Epoch). A unique ID for the price data."
-            ),
-        dataProvider: z
-            .string()
-            .optional()
-            .describe(
-                "Optional: Source or provider of the data (e.g., 'Chainlink', 'Band Protocol'). Must be hex encoded."
-            ),
-        assetClass: z
-            .string()
-            .optional()
-            .describe(
-                "Optional: Classification of the asset (e.g., 'currency', 'commodity'). Must be hex encoded."
-            ),
-        uri: z
-            .string()
-            .url()
-            .optional()
-            .describe(
-                "Optional: URI for additional data or metadata. Must be hex encoded."
-            ),
-        dataSeries: z
-            .array(
-                z.object({
-                    baseAsset: z
-                        .string()
-                        .describe("Base asset currency code (e.g., 'XRP')."),
-                    quoteAsset: z
-                        .string()
-                        .describe("Quote asset currency code (e.g., 'USD')."),
-                    scale: z
-                        .number()
-                        .int()
-                        .optional()
-                        .describe(
-                            "Optional scale factor for the price (e.g., 6 for 6 decimal places). Defaults to 0."
-                        ),
-                    price: z
-                        .number()
-                        .positive()
-                        .describe(
-                            "Price of the base asset in terms of the quote asset."
-                        ),
-                })
-            )
-            .min(1)
-            .describe("Array of price data points (at least one required)."),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). Requires Price Oracle amendment enabled network. If not provided, uses the network from the connected wallet."
-            ),
+        title: "Set Oracle",
+        description: "Set or update Oracle data on the XRP Ledger (Requires Price Oracle amendment)",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet that owns the oracle. If not provided, the connected wallet will be used."
+                ),
+            oracleDocumentID: z
+                .number()
+                .int()
+                .positive()
+                .describe("The ID of the Oracle object to set/update."),
+            lastUpdateTime: z
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    "Timestamp of the last update (seconds since Ripple Epoch). A unique ID for the price data."
+                ),
+            dataProvider: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional: Source or provider of the data (e.g., 'Chainlink', 'Band Protocol'). Must be hex encoded."
+                ),
+            assetClass: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional: Classification of the asset (e.g., 'currency', 'commodity'). Must be hex encoded."
+                ),
+            uri: z
+                .string()
+                .url()
+                .optional()
+                .describe(
+                    "Optional: URI for additional data or metadata. Must be hex encoded."
+                ),
+            dataSeries: z
+                .array(
+                    z.object({
+                        baseAsset: z
+                            .string()
+                            .describe("Base asset currency code (e.g., 'XRP')."),
+                        quoteAsset: z
+                            .string()
+                            .describe("Quote asset currency code (e.g., 'USD')."),
+                        scale: z
+                            .number()
+                            .int()
+                            .optional()
+                            .describe(
+                                "Optional scale factor for the price (e.g., 6 for 6 decimal places). Defaults to 0."
+                            ),
+                        price: z
+                            .number()
+                            .positive()
+                            .describe(
+                                "Price of the base asset in terms of the quote asset."
+                            ),
+                    })
+                )
+                .min(1)
+                .describe("Array of price data points (at least one required)."),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). Requires Price Oracle amendment enabled network. If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { idempotentHint: true },
     },
     async ({
         fromSeed,

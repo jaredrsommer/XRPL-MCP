@@ -6,19 +6,24 @@ import { MAINNET_URL, TESTNET_URL, DID_PREFIX } from "../../core/constants.js";
 import { retrieveDIDDocument } from "../../core/utils.js";
 
 // Register resolve-did tool
-server.tool(
+server.registerTool(
     "resolve-did",
-    "Resolve a DID to retrieve its DID document",
     {
-        did: z
-            .string()
-            .describe(
-                "The DID to resolve (format: did:xrpl:[network]:[address])"
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Resolve DID",
+        description: "Resolve a DID to retrieve its DID document",
+        inputSchema: {
+            did: z
+                .string()
+                .describe(
+                    "The DID to resolve (format: did:xrpl:[network]:[address])"
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ did, useTestnet }) => {
         let client: Client | null = null;

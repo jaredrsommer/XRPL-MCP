@@ -6,21 +6,25 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register approve-token-spending tool (TrustSet)
-server.tool(
+server.registerTool(
     "approve-token-spending",
-    "Establish trust line to approve token usage",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe("Seed of the wallet, if not using connected wallet"),
-        currency: z.string().describe("Currency code"),
-        issuer: z.string().describe("Issuer address for the token"),
-        limit: z.string().describe("Maximum amount approved for use"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Approve Token Spending",
+        description: "Establish trust line to approve token usage",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe("Seed of the wallet, if not using connected wallet"),
+            currency: z.string().describe("Currency code"),
+            issuer: z.string().describe("Issuer address for the token"),
+            limit: z.string().describe("Maximum amount approved for use"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
     },
     async ({ fromSeed, currency, issuer, limit, useTestnet }) => {
         let client: Client | null = null;

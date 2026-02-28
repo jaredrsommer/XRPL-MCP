@@ -7,57 +7,61 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register payment-channel-create tool
-server.tool(
+server.registerTool(
     "payment-channel-create",
-    "Create a Payment Channel on the XRP Ledger for off-ledger payments",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet (sender/source) creating the channel. If not provided, the connected wallet will be used."
-            ),
-        amount: z
-            .string()
-            .describe("Amount of XRP, in drops, to allocate to the channel."),
-        destination: z
-            .string()
-            .describe("Address of the recipient (destination) of the channel."),
-        settleDelay: z
-            .number()
-            .int()
-            .positive()
-            .describe(
-                "Amount of time in seconds the source address must wait after requesting to close the channel before it closes."
-            ),
-        publicKey: z
-            .string()
-            .describe(
-                "The public key of the key pair the source will use to sign claims against this channel, in hexadecimal."
-            ),
-        cancelAfter: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Optional timestamp (seconds since Ripple Epoch) after which the channel becomes expired."
-            ),
-        destinationTag: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Optional arbitrary unsigned 32-bit integer tag for the destination."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Create Payment Channel",
+        description: "Create a Payment Channel on the XRP Ledger for off-ledger payments",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet (sender/source) creating the channel. If not provided, the connected wallet will be used."
+                ),
+            amount: z
+                .string()
+                .describe("Amount of XRP, in drops, to allocate to the channel."),
+            destination: z
+                .string()
+                .describe("Address of the recipient (destination) of the channel."),
+            settleDelay: z
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    "Amount of time in seconds the source address must wait after requesting to close the channel before it closes."
+                ),
+            publicKey: z
+                .string()
+                .describe(
+                    "The public key of the key pair the source will use to sign claims against this channel, in hexadecimal."
+                ),
+            cancelAfter: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Optional timestamp (seconds since Ripple Epoch) after which the channel becomes expired."
+                ),
+            destinationTag: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Optional arbitrary unsigned 32-bit integer tag for the destination."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

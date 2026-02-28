@@ -7,42 +7,47 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 import { retrieveDIDDocument, storeDIDDocument } from "../../core/utils.js";
 
 // Register update-did tool
-server.tool(
+server.registerTool(
     "update-did",
-    "Update a DID document with new properties",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Seed of the wallet that controls the DID, if not using connected wallet"
-            ),
-        additionalKeys: z
-            .array(
-                z.object({
-                    id: z.string(),
-                    type: z.string(),
-                    publicKeyHex: z.string(),
-                })
-            )
-            .optional()
-            .describe(
-                "Additional verification keys to add to the DID document"
-            ),
-        serviceEndpoints: z
-            .array(
-                z.object({
-                    id: z.string(),
-                    type: z.string(),
-                    serviceEndpoint: z.string(),
-                })
-            )
-            .optional()
-            .describe("Service endpoints to add to the DID document"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Update DID",
+        description: "Update a DID document with new properties",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Seed of the wallet that controls the DID, if not using connected wallet"
+                ),
+            additionalKeys: z
+                .array(
+                    z.object({
+                        id: z.string(),
+                        type: z.string(),
+                        publicKeyHex: z.string(),
+                    })
+                )
+                .optional()
+                .describe(
+                    "Additional verification keys to add to the DID document"
+                ),
+            serviceEndpoints: z
+                .array(
+                    z.object({
+                        id: z.string(),
+                        type: z.string(),
+                        serviceEndpoint: z.string(),
+                    })
+                )
+                .optional()
+                .describe("Service endpoints to add to the DID document"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
+        annotations: { idempotentHint: true },
     },
     async ({ fromSeed, additionalKeys, serviceEndpoints, useTestnet }) => {
         let client: Client | null = null;

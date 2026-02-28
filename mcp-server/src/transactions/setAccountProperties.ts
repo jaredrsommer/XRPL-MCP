@@ -6,57 +6,62 @@ import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../core/state.js";
 
 // Register set-account-properties tool
-server.tool(
+server.registerTool(
     "set-account-properties",
-    "Set or modify account properties on the XRP Ledger",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to modify. If not provided, the connected wallet will be used."
-            ),
-        domain: z
-            .string()
-            .optional()
-            .describe(
-                "Domain name to associate with this account (in hex format)"
-            ),
-        emailHash: z
-            .string()
-            .optional()
-            .describe("MD5 hash of an email address for Gravatar (in hex)"),
-        messageKey: z
-            .string()
-            .optional()
-            .describe(
-                "Public key for sending encrypted messages to this account"
-            ),
-        transferRate: z
-            .number()
-            .optional()
-            .describe(
-                "Fee to charge when users transfer this account's tokens (in billionths)"
-            ),
-        tickSize: z
-            .number()
-            .optional()
-            .describe("Tick size for offers (between 3-15, or 0 to disable)"),
-        setFlag: z
-            .number()
-            .optional()
-            .describe("Integer flag to enable for this account"),
-        clearFlag: z
-            .number()
-            .optional()
-            .describe("Integer flag to disable for this account"),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Set Account Properties",
+        description: "Set or modify account properties on the XRP Ledger",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to modify. If not provided, the connected wallet will be used."
+                ),
+            domain: z
+                .string()
+                .optional()
+                .describe(
+                    "Domain name to associate with this account (in hex format)"
+                ),
+            emailHash: z
+                .string()
+                .optional()
+                .describe("MD5 hash of an email address for Gravatar (in hex)"),
+            messageKey: z
+                .string()
+                .optional()
+                .describe(
+                    "Public key for sending encrypted messages to this account"
+                ),
+            transferRate: z
+                .number()
+                .optional()
+                .describe(
+                    "Fee to charge when users transfer this account's tokens (in billionths)"
+                ),
+            tickSize: z
+                .number()
+                .optional()
+                .describe("Tick size for offers (between 3-15, or 0 to disable)"),
+            setFlag: z
+                .number()
+                .optional()
+                .describe("Integer flag to enable for this account"),
+            clearFlag: z
+                .number()
+                .optional()
+                .describe("Integer flag to disable for this account"),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { idempotentHint: true },
     },
     async ({
         fromSeed,

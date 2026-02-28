@@ -7,20 +7,24 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 import { createDIDDocument, storeDIDDocument } from "../../core/utils.js";
 
 // Register create-did tool
-server.tool(
+server.registerTool(
     "create-did",
-    "Create a decentralized identifier (DID) for an XRPL account",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Seed of the wallet to create DID for, if not using connected wallet"
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Create DID",
+        description: "Create a decentralized identifier (DID) for an XRPL account",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Seed of the wallet to create DID for, if not using connected wallet"
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
     },
     async ({ fromSeed, useTestnet }) => {
         let client: Client | null = null;

@@ -8,46 +8,50 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
 
-server.tool(
+server.registerTool(
     "credential-create",
-    "Create a credential on the XRP Ledger. The issuer creates credentials to attest facts about a subject account (e.g., KYC verification, accreditation status). The credential must be accepted by the subject to become valid.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the issuer's wallet. If not provided, the connected wallet will be used."
-            ),
-        subject: z
-            .string()
-            .describe(
-                "The account address of the credential subject (the account the credential is about)."
-            ),
-        credentialType: z
-            .string()
-            .describe(
-                "Type of credential being issued (e.g., 'KYC', 'ACCREDITED_INVESTOR', 'AML_VERIFIED'). Will be hex-encoded."
-            ),
-        expiration: z
-            .number()
-            .int()
-            .optional()
-            .describe(
-                "Optional expiration time as Unix timestamp (seconds since Jan 1, 2000 00:00 UTC - Ripple Epoch). After this time, the credential is considered expired."
-            ),
-        uri: z
-            .string()
-            .optional()
-            .describe(
-                "Optional URI pointing to additional credential data or metadata. Will be hex-encoded."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Create Credential",
+        description: "Create a credential on the XRP Ledger. The issuer creates credentials to attest facts about a subject account (e.g., KYC verification, accreditation status). The credential must be accepted by the subject to become valid.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the issuer's wallet. If not provided, the connected wallet will be used."
+                ),
+            subject: z
+                .string()
+                .describe(
+                    "The account address of the credential subject (the account the credential is about)."
+                ),
+            credentialType: z
+                .string()
+                .describe(
+                    "Type of credential being issued (e.g., 'KYC', 'ACCREDITED_INVESTOR', 'AML_VERIFIED'). Will be hex-encoded."
+                ),
+            expiration: z
+                .number()
+                .int()
+                .optional()
+                .describe(
+                    "Optional expiration time as Unix timestamp (seconds since Jan 1, 2000 00:00 UTC - Ripple Epoch). After this time, the credential is considered expired."
+                ),
+            uri: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional URI pointing to additional credential data or metadata. Will be hex-encoded."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
     },
     async ({
         fromSeed,

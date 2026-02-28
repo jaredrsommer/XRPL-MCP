@@ -7,54 +7,58 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register check-cash tool
-server.tool(
+server.registerTool(
     "check-cash",
-    "Cash a Check to receive funds from it",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        checkID: z
-            .string()
-            .describe(
-                "The ID of the Check ledger object to cash, as a 64-character hexadecimal string"
-            ),
-        amount: z
-            .object({
-                currency: z.string().describe("Currency code"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe("Issuer address (not needed for XRP)"),
-                value: z.string().describe("Amount to cash"),
-            })
-            .optional()
-            .describe(
-                "Amount to cash. Required for Checks with a sendMax, or to cash a lesser amount"
-            ),
-        deliverMin: z
-            .object({
-                currency: z.string().describe("Currency code"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe("Issuer address (not needed for XRP)"),
-                value: z.string().describe("Minimum amount to receive"),
-            })
-            .optional()
-            .describe(
-                "Minimum amount to receive. Required for Checks with an amount"
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Cash Check",
+        description: "Cash a Check to receive funds from it",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            checkID: z
+                .string()
+                .describe(
+                    "The ID of the Check ledger object to cash, as a 64-character hexadecimal string"
+                ),
+            amount: z
+                .object({
+                    currency: z.string().describe("Currency code"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe("Issuer address (not needed for XRP)"),
+                    value: z.string().describe("Amount to cash"),
+                })
+                .optional()
+                .describe(
+                    "Amount to cash. Required for Checks with a sendMax, or to cash a lesser amount"
+                ),
+            deliverMin: z
+                .object({
+                    currency: z.string().describe("Currency code"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe("Issuer address (not needed for XRP)"),
+                    value: z.string().describe("Minimum amount to receive"),
+                })
+                .optional()
+                .describe(
+                    "Minimum amount to receive. Required for Checks with an amount"
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({ fromSeed, checkID, amount, deliverMin, fee, useTestnet }) => {
         let client: Client | null = null;

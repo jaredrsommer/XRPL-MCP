@@ -8,33 +8,37 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
 
-server.tool(
+server.registerTool(
     "credential-accept",
-    "Accept a credential that was issued to your account. The credential must be accepted by the subject for it to be considered valid. After acceptance, the reserve burden transfers from the issuer to the subject.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the subject's wallet. If not provided, the connected wallet will be used."
-            ),
-        issuer: z
-            .string()
-            .describe(
-                "The account address of the credential issuer."
-            ),
-        credentialType: z
-            .string()
-            .describe(
-                "Type of credential to accept (must match the issued credential type). Will be hex-encoded."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Accept Credential",
+        description: "Accept a credential that was issued to your account. The credential must be accepted by the subject for it to be considered valid. After acceptance, the reserve burden transfers from the issuer to the subject.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the subject's wallet. If not provided, the connected wallet will be used."
+                ),
+            issuer: z
+                .string()
+                .describe(
+                    "The account address of the credential issuer."
+                ),
+            credentialType: z
+                .string()
+                .describe(
+                    "Type of credential to accept (must match the issued credential type). Will be hex-encoded."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
     },
     async ({
         fromSeed,

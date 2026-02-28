@@ -5,21 +5,26 @@ import { getXrplClient } from "../../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
-server.tool(
+server.registerTool(
     "permissioned-domain-get-info",
-    "Get information about a Permissioned Domain on the XRP Ledger.",
     {
-        domainID: z
-            .string()
-            .describe(
-                "The ID of the Permissioned Domain to query (64-character hex string)."
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Get Permissioned Domain Info",
+        description: "Get information about a Permissioned Domain on the XRP Ledger.",
+        inputSchema: {
+            domainID: z
+                .string()
+                .describe(
+                    "The ID of the Permissioned Domain to query (64-character hex string)."
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ domainID, useTestnet }) => {
         let client: Client | null = null;
@@ -122,22 +127,27 @@ server.tool(
     }
 );
 
-server.tool(
+server.registerTool(
     "permissioned-domains-list",
-    "List all Permissioned Domains owned by an account.",
     {
-        account: z
-            .string()
-            .optional()
-            .describe(
-                "The account address to list domains for. If not provided, uses the connected wallet."
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "List Permissioned Domains",
+        description: "List all Permissioned Domains owned by an account.",
+        inputSchema: {
+            account: z
+                .string()
+                .optional()
+                .describe(
+                    "The account address to list domains for. If not provided, uses the connected wallet."
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ account, useTestnet }) => {
         let client: Client | null = null;

@@ -13,82 +13,86 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register amm-bid tool
-server.tool(
+server.registerTool(
     "amm-bid",
-    "Place a bid on an Automated Market Maker's (AMM) auction slot on the XRP Ledger",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        asset1: z
-            .object({
-                currency: z
-                    .string()
-                    .describe("Currency code of the first asset"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe(
-                        "Issuer address of the first asset (not needed for XRP)"
-                    ),
-            })
-            .describe("First asset in the AMM's pool"),
-        asset2: z
-            .object({
-                currency: z
-                    .string()
-                    .describe("Currency code of the second asset"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe(
-                        "Issuer address of the second asset (not needed for XRP)"
-                    ),
-            })
-            .describe("Second asset in the AMM's pool"),
-        bidMin: z
-            .object({
-                currency: z.string().describe("Currency code of the bid"),
-                issuer: z.string().describe("Issuer address of the bid token"),
-                value: z.string().describe("Minimum bid amount"),
-            })
-            .optional()
-            .describe(
-                "Minimum amount for the bid. Required unless bidMax is provided."
-            ),
-        bidMax: z
-            .object({
-                currency: z.string().describe("Currency code of the bid"),
-                issuer: z.string().describe("Issuer address of the bid token"),
-                value: z.string().describe("Maximum bid amount"),
-            })
-            .optional()
-            .describe(
-                "Maximum amount for the bid. Required unless bidMin is provided."
-            ),
-        authAccounts: z
-            .array(
-                z
-                    .object({
-                        account: z.string().describe("Account address"),
-                    })
-                    .describe("An authorized account")
-            )
-            .max(4)
-            .optional()
-            .describe(
-                "List of up to 4 accounts authorized to trade at the discounted fee."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "AMM Bid",
+        description: "Place a bid on an Automated Market Maker's (AMM) auction slot on the XRP Ledger",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            asset1: z
+                .object({
+                    currency: z
+                        .string()
+                        .describe("Currency code of the first asset"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe(
+                            "Issuer address of the first asset (not needed for XRP)"
+                        ),
+                })
+                .describe("First asset in the AMM's pool"),
+            asset2: z
+                .object({
+                    currency: z
+                        .string()
+                        .describe("Currency code of the second asset"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe(
+                            "Issuer address of the second asset (not needed for XRP)"
+                        ),
+                })
+                .describe("Second asset in the AMM's pool"),
+            bidMin: z
+                .object({
+                    currency: z.string().describe("Currency code of the bid"),
+                    issuer: z.string().describe("Issuer address of the bid token"),
+                    value: z.string().describe("Minimum bid amount"),
+                })
+                .optional()
+                .describe(
+                    "Minimum amount for the bid. Required unless bidMax is provided."
+                ),
+            bidMax: z
+                .object({
+                    currency: z.string().describe("Currency code of the bid"),
+                    issuer: z.string().describe("Issuer address of the bid token"),
+                    value: z.string().describe("Maximum bid amount"),
+                })
+                .optional()
+                .describe(
+                    "Maximum amount for the bid. Required unless bidMin is provided."
+                ),
+            authAccounts: z
+                .array(
+                    z
+                        .object({
+                            account: z.string().describe("Account address"),
+                        })
+                        .describe("An authorized account")
+                )
+                .max(4)
+                .optional()
+                .describe(
+                    "List of up to 4 accounts authorized to trade at the discounted fee."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

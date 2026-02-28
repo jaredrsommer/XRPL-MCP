@@ -6,58 +6,62 @@ import { getXrplClient } from "../../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
-server.tool(
+server.registerTool(
     "check-create",
-    "Create a Check that can be cashed by the destination account",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        destination: z
-            .string()
-            .describe("The XRP Ledger address that can cash the Check"),
-        sendMax: z
-            .object({
-                currency: z.string().describe("Currency code"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe("Issuer address (not needed for XRP)"),
-                value: z
-                    .string()
-                    .describe(
-                        "Maximum amount the Check can debit from your account"
-                    ),
-            })
-            .describe("Maximum amount the Check can debit from your account"),
-        destinationTag: z
-            .number()
-            .optional()
-            .describe(
-                "Destination tag to identify the beneficiary or purpose at the destination account"
-            ),
-        expiration: z
-            .number()
-            .optional()
-            .describe(
-                "Time after which the Check expires, in seconds since the Ripple Epoch"
-            ),
-        invoiceID: z
-            .string()
-            .optional()
-            .describe(
-                "Arbitrary 256-bit hash representing a specific reason or identifier for this Check"
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Create Check",
+        description: "Create a Check that can be cashed by the destination account",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            destination: z
+                .string()
+                .describe("The XRP Ledger address that can cash the Check"),
+            sendMax: z
+                .object({
+                    currency: z.string().describe("Currency code"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe("Issuer address (not needed for XRP)"),
+                    value: z
+                        .string()
+                        .describe(
+                            "Maximum amount the Check can debit from your account"
+                        ),
+                })
+                .describe("Maximum amount the Check can debit from your account"),
+            destinationTag: z
+                .number()
+                .optional()
+                .describe(
+                    "Destination tag to identify the beneficiary or purpose at the destination account"
+                ),
+            expiration: z
+                .number()
+                .optional()
+                .describe(
+                    "Time after which the Check expires, in seconds since the Ripple Epoch"
+                ),
+            invoiceID: z
+                .string()
+                .optional()
+                .describe(
+                    "Arbitrary 256-bit hash representing a specific reason or identifier for this Check"
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

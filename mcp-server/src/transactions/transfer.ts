@@ -7,28 +7,32 @@ import { MAINNET_URL, TESTNET_URL } from "../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../core/state.js";
 
 // Register XRPL transfer tool
-server.tool(
+server.registerTool(
     "transfer-xrp",
-    "Transfer XRP between accounts using the connected wallet or a specified seed",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to send XRP from. If not provided, the connected wallet will be used."
-            ),
-        toAddress: z
-            .string()
-            .describe(
-                "XRP Ledger account address to send XRP to (starts with r)"
-            ),
-        amount: z.string().describe("Amount of XRP to send"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Transfer XRP",
+        description: "Transfer XRP between accounts using the connected wallet or a specified seed",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to send XRP from. If not provided, the connected wallet will be used."
+                ),
+            toAddress: z
+                .string()
+                .describe(
+                    "XRP Ledger account address to send XRP to (starts with r)"
+                ),
+            amount: z.string().describe("Amount of XRP to send"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({ fromSeed, toAddress, amount, useTestnet }) => {
         let client: Client | null = null;

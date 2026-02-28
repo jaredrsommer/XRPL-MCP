@@ -6,30 +6,35 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register offer-cancel tool
-server.tool(
+server.registerTool(
     "offer-cancel",
-    "Cancel an existing Offer (order) in the XRP Ledger's decentralized exchange",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet that created the offer. If not provided, the connected wallet will be used."
-            ),
-        offerSequence: z
-            .number()
-            .int()
-            .positive()
-            .describe(
-                "The sequence number of the OfferCreate transaction that created the offer to cancel."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Cancel Offer",
+        description: "Cancel an existing Offer (order) in the XRP Ledger's decentralized exchange",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet that created the offer. If not provided, the connected wallet will be used."
+                ),
+            offerSequence: z
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    "The sequence number of the OfferCreate transaction that created the offer to cancel."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({ fromSeed, offerSequence, fee, useTestnet }) => {
         let client: Client | null = null;

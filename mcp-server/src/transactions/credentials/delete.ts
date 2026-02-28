@@ -8,40 +8,45 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
 
-server.tool(
+server.registerTool(
     "credential-delete",
-    "Delete a credential from the XRP Ledger. Either the issuer or the subject can delete a credential at any time. Anyone can delete an expired credential.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet (issuer, subject, or anyone for expired credentials). If not provided, the connected wallet will be used."
-            ),
-        issuer: z
-            .string()
-            .optional()
-            .describe(
-                "The account address of the credential issuer. Required if caller is not the issuer."
-            ),
-        subject: z
-            .string()
-            .optional()
-            .describe(
-                "The account address of the credential subject. Required if caller is not the subject."
-            ),
-        credentialType: z
-            .string()
-            .describe(
-                "Type of credential to delete. Will be hex-encoded."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Delete Credential",
+        description: "Delete a credential from the XRP Ledger. Either the issuer or the subject can delete a credential at any time. Anyone can delete an expired credential.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet (issuer, subject, or anyone for expired credentials). If not provided, the connected wallet will be used."
+                ),
+            issuer: z
+                .string()
+                .optional()
+                .describe(
+                    "The account address of the credential issuer. Required if caller is not the issuer."
+                ),
+            subject: z
+                .string()
+                .optional()
+                .describe(
+                    "The account address of the credential subject. Required if caller is not the subject."
+                ),
+            credentialType: z
+                .string()
+                .describe(
+                    "Type of credential to delete. Will be hex-encoded."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({
         fromSeed,

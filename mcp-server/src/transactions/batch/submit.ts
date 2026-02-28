@@ -15,49 +15,53 @@ const BatchModes = {
 // Inner transaction flag
 const tfInnerBatchTxn = 0x80000000;
 
-server.tool(
+server.registerTool(
     "batch-submit",
-    "Submit a batch of up to 8 transactions atomically on the XRP Ledger. Batch transactions allow multiple operations to succeed or fail together based on the selected batch mode.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the outer transaction sender's wallet. If not provided, the connected wallet will be used."
-            ),
-        batchMode: z
-            .enum(["ALLORNOTHING", "ONLYONE", "UNTILFAILURE"])
-            .describe(
-                "Batch mode: ALLORNOTHING (all must succeed), ONLYONE (first success wins), or UNTILFAILURE (apply until failure)."
-            ),
-        rawTransactions: z
-            .array(
-                z.object({
-                    transactionJson: z
-                        .string()
-                        .describe(
-                            "The raw transaction JSON as a string. The transaction must include Account and TransactionType at minimum."
-                        ),
-                    signerSeed: z
-                        .string()
-                        .optional()
-                        .describe(
-                            "Optional seed for signing this inner transaction. If not provided, uses the outer transaction sender's wallet."
-                        ),
-                })
-            )
-            .min(1)
-            .max(8)
-            .describe(
-                "Array of inner transactions (1-8). Each transaction will be flagged as an inner batch transaction automatically."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops for the outer batch transaction"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Submit Batch",
+        description: "Submit a batch of up to 8 transactions atomically on the XRP Ledger. Batch transactions allow multiple operations to succeed or fail together based on the selected batch mode.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the outer transaction sender's wallet. If not provided, the connected wallet will be used."
+                ),
+            batchMode: z
+                .enum(["ALLORNOTHING", "ONLYONE", "UNTILFAILURE"])
+                .describe(
+                    "Batch mode: ALLORNOTHING (all must succeed), ONLYONE (first success wins), or UNTILFAILURE (apply until failure)."
+                ),
+            rawTransactions: z
+                .array(
+                    z.object({
+                        transactionJson: z
+                            .string()
+                            .describe(
+                                "The raw transaction JSON as a string. The transaction must include Account and TransactionType at minimum."
+                            ),
+                        signerSeed: z
+                            .string()
+                            .optional()
+                            .describe(
+                                "Optional seed for signing this inner transaction. If not provided, uses the outer transaction sender's wallet."
+                            ),
+                    })
+                )
+                .min(1)
+                .max(8)
+                .describe(
+                    "Array of inner transactions (1-8). Each transaction will be flagged as an inner batch transaction automatically."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops for the outer batch transaction"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
     },
     async ({
         fromSeed,
@@ -219,40 +223,44 @@ server.tool(
     }
 );
 
-server.tool(
+server.registerTool(
     "batch-payment",
-    "Submit a batch of payment transactions. This is a convenience wrapper around batch-submit for common payment batching scenarios.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the sender's wallet. If not provided, the connected wallet will be used."
-            ),
-        batchMode: z
-            .enum(["ALLORNOTHING", "ONLYONE", "UNTILFAILURE"])
-            .optional()
-            .describe(
-                "Batch mode. Defaults to ALLORNOTHING for payment batches."
-            ),
-        payments: z
-            .array(
-                z.object({
-                    destination: z.string().describe("Destination account address"),
-                    amount: z.string().describe("Amount in XRP or drops"),
-                    destinationTag: z.number().int().optional().describe("Optional destination tag"),
-                })
-            )
-            .min(1)
-            .max(8)
-            .describe("Array of payments to batch (1-8)"),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Batch Payment",
+        description: "Submit a batch of payment transactions. This is a convenience wrapper around batch-submit for common payment batching scenarios.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the sender's wallet. If not provided, the connected wallet will be used."
+                ),
+            batchMode: z
+                .enum(["ALLORNOTHING", "ONLYONE", "UNTILFAILURE"])
+                .optional()
+                .describe(
+                    "Batch mode. Defaults to ALLORNOTHING for payment batches."
+                ),
+            payments: z
+                .array(
+                    z.object({
+                        destination: z.string().describe("Destination account address"),
+                        amount: z.string().describe("Amount in XRP or drops"),
+                        destinationTag: z.number().int().optional().describe("Optional destination tag"),
+                    })
+                )
+                .min(1)
+                .max(8)
+                .describe("Array of payments to batch (1-8)"),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
     },
     async ({
         fromSeed,

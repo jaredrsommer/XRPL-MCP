@@ -5,109 +5,113 @@ import { getXrplClient } from "../../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
-server.tool(
+server.registerTool(
     "nft-mint",
-    "Create a non-fungible token on the XRP Ledger",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        nftokenTaxon: z
-            .number()
-            .describe(
-                "An arbitrary identifier for a collection of related NFTs"
-            ),
-        issuer: z
-            .string()
-            .optional()
-            .describe(
-                "Issuer account (if minting on behalf of another account)"
-            ),
-        transferFee: z
-            .number()
-            .min(0)
-            .max(50000)
-            .optional()
-            .describe(
-                "Fee for secondary sales (0-50000, representing 0.00%-50.00%)"
-            ),
-        uri: z
-            .string()
-            .optional()
-            .describe(
-                "URI pointing to token metadata (up to 256 bytes, will be converted to hex)"
-            ),
-        flags: z
-            .object({
-                burnable: z
-                    .boolean()
-                    .optional()
-                    .describe("Allow the issuer to burn the token"),
-                onlyXRP: z
-                    .boolean()
-                    .optional()
-                    .describe("The token can only be bought or sold for XRP"),
-                transferable: z
-                    .boolean()
-                    .optional()
-                    .describe("The token can be transferred to others"),
-                mutable: z
-                    .boolean()
-                    .optional()
-                    .describe("The URI field can be updated later"),
-            })
-            .optional()
-            .describe("Token flags"),
-        amount: z
-            .object({
-                currency: z.string().describe("Currency code"),
-                issuer: z
-                    .string()
-                    .optional()
-                    .describe("Issuer account address"),
-                value: z.string().describe("Amount value"),
-            })
-            .optional()
-            .describe("Amount expected for the NFToken"),
-        expiration: z
-            .number()
-            .optional()
-            .describe(
-                "Time after which the offer is no longer active (seconds since Ripple Epoch)"
-            ),
-        destination: z
-            .string()
-            .optional()
-            .describe("Account that may accept this offer"),
-        memos: z
-            .array(
-                z.object({
-                    memoType: z
-                        .string()
+        title: "Mint NFT",
+        description: "Create a non-fungible token on the XRP Ledger",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            nftokenTaxon: z
+                .number()
+                .describe(
+                    "An arbitrary identifier for a collection of related NFTs"
+                ),
+            issuer: z
+                .string()
+                .optional()
+                .describe(
+                    "Issuer account (if minting on behalf of another account)"
+                ),
+            transferFee: z
+                .number()
+                .min(0)
+                .max(50000)
+                .optional()
+                .describe(
+                    "Fee for secondary sales (0-50000, representing 0.00%-50.00%)"
+                ),
+            uri: z
+                .string()
+                .optional()
+                .describe(
+                    "URI pointing to token metadata (up to 256 bytes, will be converted to hex)"
+                ),
+            flags: z
+                .object({
+                    burnable: z
+                        .boolean()
                         .optional()
-                        .describe("Type of memo (hex encoded)"),
-                    memoData: z
-                        .string()
+                        .describe("Allow the issuer to burn the token"),
+                    onlyXRP: z
+                        .boolean()
                         .optional()
-                        .describe("Content of memo (hex encoded)"),
-                    memoFormat: z
-                        .string()
+                        .describe("The token can only be bought or sold for XRP"),
+                    transferable: z
+                        .boolean()
                         .optional()
-                        .describe("Format of memo (hex encoded)"),
+                        .describe("The token can be transferred to others"),
+                    mutable: z
+                        .boolean()
+                        .optional()
+                        .describe("The URI field can be updated later"),
                 })
-            )
-            .optional()
-            .describe("Array of memos to attach to the transaction"),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+                .optional()
+                .describe("Token flags"),
+            amount: z
+                .object({
+                    currency: z.string().describe("Currency code"),
+                    issuer: z
+                        .string()
+                        .optional()
+                        .describe("Issuer account address"),
+                    value: z.string().describe("Amount value"),
+                })
+                .optional()
+                .describe("Amount expected for the NFToken"),
+            expiration: z
+                .number()
+                .optional()
+                .describe(
+                    "Time after which the offer is no longer active (seconds since Ripple Epoch)"
+                ),
+            destination: z
+                .string()
+                .optional()
+                .describe("Account that may accept this offer"),
+            memos: z
+                .array(
+                    z.object({
+                        memoType: z
+                            .string()
+                            .optional()
+                            .describe("Type of memo (hex encoded)"),
+                        memoData: z
+                            .string()
+                            .optional()
+                            .describe("Content of memo (hex encoded)"),
+                        memoFormat: z
+                            .string()
+                            .optional()
+                            .describe("Format of memo (hex encoded)"),
+                    })
+                )
+                .optional()
+                .describe("Array of memos to attach to the transaction"),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({
         fromSeed,

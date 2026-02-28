@@ -6,33 +6,38 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register escrow-cancel tool
-server.tool(
+server.registerTool(
     "escrow-cancel",
-    "Cancel an unexecuted Escrow on the XRP Ledger",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet to use (must be sender or receiver, or expired). If not provided, the connected wallet will be used."
-            ),
-        owner: z
-            .string()
-            .describe("Address of the account that created the escrow"),
-        offerSequence: z
-            .number()
-            .int()
-            .positive()
-            .describe(
-                "Transaction sequence number of the EscrowCreate transaction that created the escrow"
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Cancel Escrow",
+        description: "Cancel an unexecuted Escrow on the XRP Ledger",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet to use (must be sender or receiver, or expired). If not provided, the connected wallet will be used."
+                ),
+            owner: z
+                .string()
+                .describe("Address of the account that created the escrow"),
+            offerSequence: z
+                .number()
+                .int()
+                .positive()
+                .describe(
+                    "Transaction sequence number of the EscrowCreate transaction that created the escrow"
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
+        annotations: { destructiveHint: true },
     },
     async ({ fromSeed, owner, offerSequence, fee, useTestnet }) => {
         let client: Client | null = null;

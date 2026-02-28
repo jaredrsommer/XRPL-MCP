@@ -5,21 +5,26 @@ import { getXrplClient } from "../../core/services/clients.js";
 import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
-server.tool(
+server.registerTool(
     "mpt-get-info",
-    "Get information about a Multi-Purpose Token (MPT) issuance including metadata, supply, and flags.",
     {
-        mptIssuanceID: z
-            .string()
-            .describe(
-                "The MPTokenIssuanceID of the MPT to query (64-character hex string)."
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Get MPT Info",
+        description: "Get information about a Multi-Purpose Token (MPT) issuance including metadata, supply, and flags.",
+        inputSchema: {
+            mptIssuanceID: z
+                .string()
+                .describe(
+                    "The MPTokenIssuanceID of the MPT to query (64-character hex string)."
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ mptIssuanceID, useTestnet }) => {
         let client: Client | null = null;
@@ -112,27 +117,32 @@ server.tool(
     }
 );
 
-server.tool(
+server.registerTool(
     "mpt-get-balance",
-    "Get the MPT balance for a specific account.",
     {
-        account: z
-            .string()
-            .optional()
-            .describe(
-                "The account address to check balance for. If not provided, uses the connected wallet."
-            ),
-        mptIssuanceID: z
-            .string()
-            .describe(
-                "The MPTokenIssuanceID of the MPT to query (64-character hex string)."
-            ),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Get MPT Balance",
+        description: "Get the MPT balance for a specific account.",
+        inputSchema: {
+            account: z
+                .string()
+                .optional()
+                .describe(
+                    "The account address to check balance for. If not provided, uses the connected wallet."
+                ),
+            mptIssuanceID: z
+                .string()
+                .describe(
+                    "The MPTokenIssuanceID of the MPT to query (64-character hex string)."
+                ),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ account, mptIssuanceID, useTestnet }) => {
         let client: Client | null = null;

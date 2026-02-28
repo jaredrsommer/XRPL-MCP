@@ -8,45 +8,50 @@ import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 // Helper to convert string to hex
 const toHex = (str: string) => Buffer.from(str, "utf-8").toString("hex");
 
-server.tool(
+server.registerTool(
     "permissioned-domain-set",
-    "Create or modify a Permissioned Domain on the XRP Ledger. Permissioned Domains define access rules based on credentials, allowing only authorized accounts (those with accepted credentials from specified issuers) to participate in certain activities.",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the domain owner's wallet. If not provided, the connected wallet will be used."
-            ),
-        domainID: z
-            .string()
-            .optional()
-            .describe(
-                "Optional: The ID of an existing Permissioned Domain to modify (64-character hex string). If not provided, a new domain will be created."
-            ),
-        acceptedCredentials: z
-            .array(
-                z.object({
-                    issuer: z
-                        .string()
-                        .describe("The account address of the credential issuer."),
-                    credentialType: z
-                        .string()
-                        .describe("The type of credential required. Will be hex-encoded."),
-                })
-            )
-            .min(1)
-            .max(10)
-            .describe(
-                "List of accepted credentials (1-10). Accounts holding any one of these credentials from the specified issuers are members of the domain."
-            ),
-        fee: z.string().optional().describe("Transaction fee in drops"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false)."
-            ),
+        title: "Set Permissioned Domain",
+        description: "Create or modify a Permissioned Domain on the XRP Ledger. Permissioned Domains define access rules based on credentials, allowing only authorized accounts (those with accepted credentials from specified issuers) to participate in certain activities.",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the domain owner's wallet. If not provided, the connected wallet will be used."
+                ),
+            domainID: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional: The ID of an existing Permissioned Domain to modify (64-character hex string). If not provided, a new domain will be created."
+                ),
+            acceptedCredentials: z
+                .array(
+                    z.object({
+                        issuer: z
+                            .string()
+                            .describe("The account address of the credential issuer."),
+                        credentialType: z
+                            .string()
+                            .describe("The type of credential required. Will be hex-encoded."),
+                    })
+                )
+                .min(1)
+                .max(10)
+                .describe(
+                    "List of accepted credentials (1-10). Accounts holding any one of these credentials from the specified issuers are members of the domain."
+                ),
+            fee: z.string().optional().describe("Transaction fee in drops"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false)."
+                ),
+
+        },
+        annotations: { idempotentHint: true },
     },
     async ({
         fromSeed,

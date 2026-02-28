@@ -14,27 +14,31 @@ type TicketCreateTransaction = {
 };
 
 // Register the TicketCreate tool
-server.tool(
+server.registerTool(
     "ticket-create",
-    "Create one or more sequence number tickets on the XRP Ledger",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Seed of the wallet to use. If not provided, the connected wallet will be used."
-            ),
-        ticketCount: z
-            .number()
-            .int()
-            .min(1)
-            .max(250)
-            .describe("Number of tickets to create (1-250)"),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet (true) or mainnet (false)"),
+        title: "Create Ticket",
+        description: "Create one or more sequence number tickets on the XRP Ledger",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Seed of the wallet to use. If not provided, the connected wallet will be used."
+                ),
+            ticketCount: z
+                .number()
+                .int()
+                .min(1)
+                .max(250)
+                .describe("Number of tickets to create (1-250)"),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet (true) or mainnet (false)"),
+
+        },
     },
     async ({ fromSeed, ticketCount, fee, useTestnet }) => {
         let client: Client | null = null;

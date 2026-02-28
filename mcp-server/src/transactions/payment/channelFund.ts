@@ -7,37 +7,41 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register payment-channel-fund tool
-server.tool(
+server.registerTool(
     "payment-channel-fund",
-    "Add additional XRP to an existing Payment Channel",
     {
-        fromSeed: z
-            .string()
-            .optional()
-            .describe(
-                "Optional seed of the wallet (sender/source) funding the channel. If not provided, the connected wallet will be used."
-            ),
-        channel: z
-            .string()
-            .describe("The ID of the Payment Channel to add funds to."),
-        amount: z
-            .string()
-            .describe("Amount of XRP, in drops, to add to the channel."),
-        expiration: z
-            .number()
-            .int()
-            .positive()
-            .optional()
-            .describe(
-                "Optional: New expiration time (seconds since Ripple Epoch) for the channel. Must be later than the existing expiration."
-            ),
-        fee: z.string().optional().describe("Transaction fee in XRP"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe(
-                "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
-            ),
+        title: "Fund Payment Channel",
+        description: "Add additional XRP to an existing Payment Channel",
+        inputSchema: {
+            fromSeed: z
+                .string()
+                .optional()
+                .describe(
+                    "Optional seed of the wallet (sender/source) funding the channel. If not provided, the connected wallet will be used."
+                ),
+            channel: z
+                .string()
+                .describe("The ID of the Payment Channel to add funds to."),
+            amount: z
+                .string()
+                .describe("Amount of XRP, in drops, to add to the channel."),
+            expiration: z
+                .number()
+                .int()
+                .positive()
+                .optional()
+                .describe(
+                    "Optional: New expiration time (seconds since Ripple Epoch) for the channel. Must be later than the existing expiration."
+                ),
+            fee: z.string().optional().describe("Transaction fee in XRP"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe(
+                    "Whether to use the testnet (true) or mainnet (false). If not provided, uses the network from the connected wallet."
+                ),
+
+        },
     },
     async ({ fromSeed, channel, amount, expiration, fee, useTestnet }) => {
         let client: Client | null = null;

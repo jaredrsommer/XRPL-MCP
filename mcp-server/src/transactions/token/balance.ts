@@ -6,20 +6,25 @@ import { MAINNET_URL, TESTNET_URL } from "../../core/constants.js";
 import { connectedWallet, isConnectedToTestnet } from "../../core/state.js";
 
 // Register check-token-balance tool
-server.tool(
+server.registerTool(
     "check-token-balance",
-    "Check token balance for an address",
     {
-        address: z
-            .string()
-            .optional()
-            .describe("Account address to check balance for"),
-        currency: z.string().describe("Currency code"),
-        issuer: z.string().describe("Issuer address for the token"),
-        useTestnet: z
-            .boolean()
-            .optional()
-            .describe("Whether to use testnet or mainnet"),
+        title: "Check Token Balance",
+        description: "Check token balance for an address",
+        inputSchema: {
+            address: z
+                .string()
+                .optional()
+                .describe("Account address to check balance for"),
+            currency: z.string().describe("Currency code"),
+            issuer: z.string().describe("Issuer address for the token"),
+            useTestnet: z
+                .boolean()
+                .optional()
+                .describe("Whether to use testnet or mainnet"),
+
+        },
+        annotations: { readOnlyHint: true },
     },
     async ({ address, currency, issuer, useTestnet }) => {
         let client: Client | null = null;
